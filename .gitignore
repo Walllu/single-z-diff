@@ -1,0 +1,20 @@
+# macOS and Python runtime files
+.DS_Store
+**/.DS_Store
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Generated analysis products
+**/plots/
+**/smoke-tests/
+**/binning-tests/
+*.root
+
+# Original local development tree and source drops. Curated copies live under
+# feature/, reference/, and archive/.
+/muon-resolution/
+/MuonCorrectionSFs/
+/diffz_analysis_08_2026_MM.pdf
