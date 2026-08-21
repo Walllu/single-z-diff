@@ -1,0 +1,654 @@
+{
+  "schema_version": 1,
+  "method": "regional reconstructed-nVertices probability ratio",
+  "configuration": {
+    "overflow_vertex": 50,
+    "minimum_data_per_group": 100,
+    "minimum_mc_per_group": 300
+  },
+  "regions": {
+    "BB": [
+      {
+        "minimum": 0,
+        "maximum": 4,
+        "data_count": 157.0,
+        "mc_count": 2183.0,
+        "weight": 0.3239206101322024
+      },
+      {
+        "minimum": 5,
+        "maximum": 5,
+        "data_count": 194.0,
+        "mc_count": 2539.0,
+        "weight": 0.3441372580915
+      },
+      {
+        "minimum": 6,
+        "maximum": 6,
+        "data_count": 425.0,
+        "mc_count": 4370.0,
+        "weight": 0.4380262707012259
+      },
+      {
+        "minimum": 7,
+        "maximum": 7,
+        "data_count": 769.0,
+        "mc_count": 6786.0,
+        "weight": 0.5103935172689761
+      },
+      {
+        "minimum": 8,
+        "maximum": 8,
+        "data_count": 1227.0,
+        "mc_count": 9468.0,
+        "weight": 0.5836855993531813
+      },
+      {
+        "minimum": 9,
+        "maximum": 9,
+        "data_count": 1887.0,
+        "mc_count": 12606.0,
+        "weight": 0.6741976935714538
+      },
+      {
+        "minimum": 10,
+        "maximum": 10,
+        "data_count": 2406.0,
+        "mc_count": 15490.0,
+        "weight": 0.6995791707640212
+      },
+      {
+        "minimum": 11,
+        "maximum": 11,
+        "data_count": 2958.0,
+        "mc_count": 18153.0,
+        "weight": 0.733909360911801
+      },
+      {
+        "minimum": 12,
+        "maximum": 12,
+        "data_count": 3499.0,
+        "mc_count": 20092.0,
+        "weight": 0.7843563883280774
+      },
+      {
+        "minimum": 13,
+        "maximum": 13,
+        "data_count": 4010.0,
+        "mc_count": 21631.0,
+        "weight": 0.8349499449196902
+      },
+      {
+        "minimum": 14,
+        "maximum": 14,
+        "data_count": 4237.0,
+        "mc_count": 22090.0,
+        "weight": 0.8638839656123325
+      },
+      {
+        "minimum": 15,
+        "maximum": 15,
+        "data_count": 4420.0,
+        "mc_count": 22115.0,
+        "weight": 0.9001771625968489
+      },
+      {
+        "minimum": 16,
+        "maximum": 16,
+        "data_count": 4547.0,
+        "mc_count": 21072.0,
+        "weight": 0.9718782470274389
+      },
+      {
+        "minimum": 17,
+        "maximum": 17,
+        "data_count": 4543.0,
+        "mc_count": 19865.0,
+        "weight": 1.0300227867360063
+      },
+      {
+        "minimum": 18,
+        "maximum": 18,
+        "data_count": 4337.0,
+        "mc_count": 18073.0,
+        "weight": 1.0808161827954492
+      },
+      {
+        "minimum": 19,
+        "maximum": 19,
+        "data_count": 4076.0,
+        "mc_count": 16120.0,
+        "weight": 1.138837614491712
+      },
+      {
+        "minimum": 20,
+        "maximum": 20,
+        "data_count": 3733.0,
+        "mc_count": 14233.0,
+        "weight": 1.1812836844724472
+      },
+      {
+        "minimum": 21,
+        "maximum": 21,
+        "data_count": 3389.0,
+        "mc_count": 12065.0,
+        "weight": 1.2651351078220827
+      },
+      {
+        "minimum": 22,
+        "maximum": 22,
+        "data_count": 3143.0,
+        "mc_count": 10426.0,
+        "weight": 1.3577484807702407
+      },
+      {
+        "minimum": 23,
+        "maximum": 23,
+        "data_count": 2590.0,
+        "mc_count": 8507.0,
+        "weight": 1.371247965945743
+      },
+      {
+        "minimum": 24,
+        "maximum": 24,
+        "data_count": 2285.0,
+        "mc_count": 6852.0,
+        "weight": 1.5019708886279852
+      },
+      {
+        "minimum": 25,
+        "maximum": 25,
+        "data_count": 1985.0,
+        "mc_count": 5428.0,
+        "weight": 1.6470748553835226
+      },
+      {
+        "minimum": 26,
+        "maximum": 26,
+        "data_count": 1592.0,
+        "mc_count": 4222.0,
+        "weight": 1.6983120831048883
+      },
+      {
+        "minimum": 27,
+        "maximum": 27,
+        "data_count": 1299.0,
+        "mc_count": 3309.0,
+        "weight": 1.7680927730437133
+      },
+      {
+        "minimum": 28,
+        "maximum": 28,
+        "data_count": 1042.0,
+        "mc_count": 2437.0,
+        "weight": 1.925771942058809
+      },
+      {
+        "minimum": 29,
+        "maximum": 29,
+        "data_count": 831.0,
+        "mc_count": 1851.0,
+        "weight": 2.0220284885923423
+      },
+      {
+        "minimum": 30,
+        "maximum": 30,
+        "data_count": 639.0,
+        "mc_count": 1262.0,
+        "weight": 2.280521486145659
+      },
+      {
+        "minimum": 31,
+        "maximum": 31,
+        "data_count": 482.0,
+        "mc_count": 941.0,
+        "weight": 2.307013202547528
+      },
+      {
+        "minimum": 32,
+        "maximum": 32,
+        "data_count": 356.0,
+        "mc_count": 654.0,
+        "weight": 2.451686381922328
+      },
+      {
+        "minimum": 33,
+        "maximum": 33,
+        "data_count": 260.0,
+        "mc_count": 457.0,
+        "weight": 2.562417035761271
+      },
+      {
+        "minimum": 34,
+        "maximum": 34,
+        "data_count": 196.0,
+        "mc_count": 356.0,
+        "weight": 2.4796976958427894
+      },
+      {
+        "minimum": 35,
+        "maximum": 50,
+        "data_count": 494.0,
+        "mc_count": 651.0,
+        "weight": 3.4177368850253633
+      }
+    ],
+    "BE": [
+      {
+        "minimum": 0,
+        "maximum": 4,
+        "data_count": 124.0,
+        "mc_count": 1802.0,
+        "weight": 0.31135718600119777
+      },
+      {
+        "minimum": 5,
+        "maximum": 5,
+        "data_count": 189.0,
+        "mc_count": 2160.0,
+        "weight": 0.3959132605059586
+      },
+      {
+        "minimum": 6,
+        "maximum": 6,
+        "data_count": 351.0,
+        "mc_count": 3762.0,
+        "weight": 0.42216314859145276
+      },
+      {
+        "minimum": 7,
+        "maximum": 7,
+        "data_count": 662.0,
+        "mc_count": 5700.0,
+        "weight": 0.5255029141953776
+      },
+      {
+        "minimum": 8,
+        "maximum": 8,
+        "data_count": 1081.0,
+        "mc_count": 8140.0,
+        "weight": 0.6008876582758038
+      },
+      {
+        "minimum": 9,
+        "maximum": 9,
+        "data_count": 1429.0,
+        "mc_count": 10887.0,
+        "weight": 0.5939036588990958
+      },
+      {
+        "minimum": 10,
+        "maximum": 10,
+        "data_count": 2052.0,
+        "mc_count": 13433.0,
+        "weight": 0.6911882341425504
+      },
+      {
+        "minimum": 11,
+        "maximum": 11,
+        "data_count": 2607.0,
+        "mc_count": 15301.0,
+        "weight": 0.7709269199130095
+      },
+      {
+        "minimum": 12,
+        "maximum": 12,
+        "data_count": 3049.0,
+        "mc_count": 16990.0,
+        "weight": 0.812000021042743
+      },
+      {
+        "minimum": 13,
+        "maximum": 13,
+        "data_count": 3418.0,
+        "mc_count": 18351.0,
+        "weight": 0.8427607833963843
+      },
+      {
+        "minimum": 14,
+        "maximum": 14,
+        "data_count": 3645.0,
+        "mc_count": 18626.0,
+        "weight": 0.8854620021439885
+      },
+      {
+        "minimum": 15,
+        "maximum": 15,
+        "data_count": 3712.0,
+        "mc_count": 18417.0,
+        "weight": 0.9119710968891278
+      },
+      {
+        "minimum": 16,
+        "maximum": 16,
+        "data_count": 3825.0,
+        "mc_count": 18099.0,
+        "weight": 0.956244289067457
+      },
+      {
+        "minimum": 17,
+        "maximum": 17,
+        "data_count": 3689.0,
+        "mc_count": 16907.0,
+        "weight": 0.9872658107843623
+      },
+      {
+        "minimum": 18,
+        "maximum": 18,
+        "data_count": 3689.0,
+        "mc_count": 15358.0,
+        "weight": 1.0868409339061866
+      },
+      {
+        "minimum": 19,
+        "maximum": 19,
+        "data_count": 3401.0,
+        "mc_count": 13887.0,
+        "weight": 1.108128670374772
+      },
+      {
+        "minimum": 20,
+        "maximum": 20,
+        "data_count": 3192.0,
+        "mc_count": 12040.0,
+        "weight": 1.1995777195396486
+      },
+      {
+        "minimum": 21,
+        "maximum": 21,
+        "data_count": 2856.0,
+        "mc_count": 10262.0,
+        "weight": 1.2592680591419303
+      },
+      {
+        "minimum": 22,
+        "maximum": 22,
+        "data_count": 2565.0,
+        "mc_count": 8686.0,
+        "weight": 1.3361633014674306
+      },
+      {
+        "minimum": 23,
+        "maximum": 23,
+        "data_count": 2183.0,
+        "mc_count": 7063.0,
+        "weight": 1.3984808522230658
+      },
+      {
+        "minimum": 24,
+        "maximum": 24,
+        "data_count": 1975.0,
+        "mc_count": 5883.0,
+        "weight": 1.5190086486472272
+      },
+      {
+        "minimum": 25,
+        "maximum": 25,
+        "data_count": 1648.0,
+        "mc_count": 4494.0,
+        "weight": 1.6592664589327224
+      },
+      {
+        "minimum": 26,
+        "maximum": 26,
+        "data_count": 1400.0,
+        "mc_count": 3580.0,
+        "weight": 1.769444739691435
+      },
+      {
+        "minimum": 27,
+        "maximum": 27,
+        "data_count": 1086.0,
+        "mc_count": 2710.0,
+        "weight": 1.8132284698343535
+      },
+      {
+        "minimum": 28,
+        "maximum": 28,
+        "data_count": 842.0,
+        "mc_count": 2024.0,
+        "weight": 1.882320527080842
+      },
+      {
+        "minimum": 29,
+        "maximum": 29,
+        "data_count": 700.0,
+        "mc_count": 1497.0,
+        "weight": 2.115768927219552
+      },
+      {
+        "minimum": 30,
+        "maximum": 30,
+        "data_count": 530.0,
+        "mc_count": 1086.0,
+        "weight": 2.208198138049545
+      },
+      {
+        "minimum": 31,
+        "maximum": 31,
+        "data_count": 364.0,
+        "mc_count": 787.0,
+        "weight": 2.092756243589311
+      },
+      {
+        "minimum": 32,
+        "maximum": 32,
+        "data_count": 317.0,
+        "mc_count": 539.0,
+        "weight": 2.6611079476361277
+      },
+      {
+        "minimum": 33,
+        "maximum": 33,
+        "data_count": 222.0,
+        "mc_count": 393.0,
+        "weight": 2.5559503840733644
+      },
+      {
+        "minimum": 34,
+        "maximum": 35,
+        "data_count": 312.0,
+        "mc_count": 476.0,
+        "weight": 2.9657848085920553
+      },
+      {
+        "minimum": 36,
+        "maximum": 50,
+        "data_count": 281.0,
+        "mc_count": 361.0,
+        "weight": 3.5220142842002176
+      }
+    ],
+    "EE": [
+      {
+        "minimum": 0,
+        "maximum": 6,
+        "data_count": 195.0,
+        "mc_count": 2374.0,
+        "weight": 0.3612932546720521
+      },
+      {
+        "minimum": 7,
+        "maximum": 7,
+        "data_count": 233.0,
+        "mc_count": 1804.0,
+        "weight": 0.5681007262374445
+      },
+      {
+        "minimum": 8,
+        "maximum": 8,
+        "data_count": 350.0,
+        "mc_count": 2531.0,
+        "weight": 0.6082496333809644
+      },
+      {
+        "minimum": 9,
+        "maximum": 9,
+        "data_count": 506.0,
+        "mc_count": 3312.0,
+        "weight": 0.6719951604348979
+      },
+      {
+        "minimum": 10,
+        "maximum": 10,
+        "data_count": 643.0,
+        "mc_count": 4211.0,
+        "weight": 0.67163247657637
+      },
+      {
+        "minimum": 11,
+        "maximum": 11,
+        "data_count": 797.0,
+        "mc_count": 4831.0,
+        "weight": 0.7256500684292012
+      },
+      {
+        "minimum": 12,
+        "maximum": 12,
+        "data_count": 973.0,
+        "mc_count": 5357.0,
+        "weight": 0.798908699907126
+      },
+      {
+        "minimum": 13,
+        "maximum": 13,
+        "data_count": 1125.0,
+        "mc_count": 5686.0,
+        "weight": 0.8702652127270605
+      },
+      {
+        "minimum": 14,
+        "maximum": 14,
+        "data_count": 1174.0,
+        "mc_count": 5872.0,
+        "weight": 0.8794031291992979
+      },
+      {
+        "minimum": 15,
+        "maximum": 15,
+        "data_count": 1213.0,
+        "mc_count": 5893.0,
+        "weight": 0.9053787904253467
+      },
+      {
+        "minimum": 16,
+        "maximum": 16,
+        "data_count": 1302.0,
+        "mc_count": 5602.0,
+        "weight": 1.0222893499044021
+      },
+      {
+        "minimum": 17,
+        "maximum": 17,
+        "data_count": 1257.0,
+        "mc_count": 5275.0,
+        "weight": 1.04813873330461
+      },
+      {
+        "minimum": 18,
+        "maximum": 18,
+        "data_count": 1124.0,
+        "mc_count": 4777.0,
+        "weight": 1.0349444182098961
+      },
+      {
+        "minimum": 19,
+        "maximum": 19,
+        "data_count": 1086.0,
+        "mc_count": 4338.0,
+        "weight": 1.1011493688906815
+      },
+      {
+        "minimum": 20,
+        "maximum": 20,
+        "data_count": 1067.0,
+        "mc_count": 3652.0,
+        "weight": 1.2851079409850292
+      },
+      {
+        "minimum": 21,
+        "maximum": 21,
+        "data_count": 899.0,
+        "mc_count": 3241.0,
+        "weight": 1.220075250192984
+      },
+      {
+        "minimum": 22,
+        "maximum": 22,
+        "data_count": 822.0,
+        "mc_count": 2761.0,
+        "weight": 1.3095176838161076
+      },
+      {
+        "minimum": 23,
+        "maximum": 23,
+        "data_count": 746.0,
+        "mc_count": 2240.0,
+        "weight": 1.4648621776493196
+      },
+      {
+        "minimum": 24,
+        "maximum": 24,
+        "data_count": 605.0,
+        "mc_count": 1791.0,
+        "weight": 1.485818445182689
+      },
+      {
+        "minimum": 25,
+        "maximum": 25,
+        "data_count": 481.0,
+        "mc_count": 1429.0,
+        "weight": 1.4805354282194405
+      },
+      {
+        "minimum": 26,
+        "maximum": 26,
+        "data_count": 423.0,
+        "mc_count": 1105.0,
+        "weight": 1.6837749573184082
+      },
+      {
+        "minimum": 27,
+        "maximum": 27,
+        "data_count": 333.0,
+        "mc_count": 825.0,
+        "weight": 1.7754001065109764
+      },
+      {
+        "minimum": 28,
+        "maximum": 28,
+        "data_count": 262.0,
+        "mc_count": 629.0,
+        "weight": 1.8321313349391406
+      },
+      {
+        "minimum": 29,
+        "maximum": 29,
+        "data_count": 202.0,
+        "mc_count": 462.0,
+        "weight": 1.923159703535056
+      },
+      {
+        "minimum": 30,
+        "maximum": 30,
+        "data_count": 157.0,
+        "mc_count": 311.0,
+        "weight": 2.2204715853715538
+      },
+      {
+        "minimum": 31,
+        "maximum": 32,
+        "data_count": 215.0,
+        "mc_count": 412.0,
+        "weight": 2.295340927522555
+      },
+      {
+        "minimum": 33,
+        "maximum": 50,
+        "data_count": 246.0,
+        "mc_count": 370.0,
+        "weight": 2.9244172682120175
+      }
+    ]
+  }
+}
