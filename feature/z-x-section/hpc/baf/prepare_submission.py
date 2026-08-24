@@ -109,14 +109,14 @@ request_gpus          = 0
 getenv                = BUDDY
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
-transfer_input_files  = $(manifest)
+transfer_input_files  = $(manifest_path)
 transfer_output_files = \"\"
 
 output                = /dev/null
 error                 = /dev/null
 log                   = {submit}/condor.$(ClusterId).log
 
-queue sample,manifest,manifest_name from {jobs}
+queue sample,manifest_path,manifest_name from {jobs}
 """)
     print(f"Prepared {len(rows)} jobs in {submit}")
     for sample, (number_files, number_jobs) in counts.items():
