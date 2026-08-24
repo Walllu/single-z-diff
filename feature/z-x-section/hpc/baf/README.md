@@ -45,6 +45,39 @@ sample may exceed that, so use an approved collaboration/shared CephFS area for
 the large inputs if one exists. The manifest driver accepts any readable
 absolute CephFS path; the inputs do not have to live below personal `$BUDDY`.
 
+### Compare a partial CephFS copy with a complete source
+
+Create an inventory wherever the known-complete source is visible:
+
+```bash
+python feature/z-x-section/hpc/baf/compare_file_inventories.py scan \
+  /path/to/complete/2016H \
+  --output complete_2016H.json
+```
+
+On BAF, inventory the candidate CephFS copy:
+
+```bash
+python feature/z-x-section/hpc/baf/compare_file_inventories.py scan \
+  /cephfs/user/tsaala/Hackathon/data/Real/2016H \
+  --output "$HOME/cephfs_2016H.json"
+```
+
+Place both small JSON files on the same machine and compare them, taking the
+known-complete inventory as the reference:
+
+```bash
+python feature/z-x-section/hpc/baf/compare_file_inventories.py compare \
+  complete_2016H.json "$HOME/cephfs_2016H.json" \
+  --output-dir "$HOME/2016H_inventory_comparison"
+```
+
+The comparison matches unique ROOT basenames and requires exact byte sizes. It
+writes separate missing, size-mismatch, and extra lists. The combined
+`copy_or_replace_from_reference.txt` is suitable as an `rsync --files-from`
+input when the complete source is mounted as a filesystem. Inspect the JSON
+summary before copying; the utility refuses ambiguous duplicate basenames.
+
 Large downloads should be performed from the designated BAF login node in a
 `screen` session, not from an HTCondor worker. Apply the certified-run JSON in
 the final measurement workflow; a directory or event fraction does not define
