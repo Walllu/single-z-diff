@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "physics_definition": {
+    "boson": "generator particles with a PDG-23 ancestor",
+    "dressing_cone_dr": 0.1,
+    "truth_mass_window_gev": [80.0, 100.0],
+    "truth_fiducial": {
+      "muon_min_pt_gev": 25.0,
+      "muon_max_abs_eta": 2.4
+    },
+    "reconstruction": {
+      "mass_window_gev": [80.0, 100.0],
+      "muon_min_pt_gev": 25.0,
+      "muon_max_abs_eta": 2.4,
+      "truth_match_dr": 0.1
+    },
+    "alternate_reporting_mass_window_gev": [50.0, 120.0]
+  },
+  "normalization": {
+    "golden_json": null,
+    "luminosity_pb_inverse": null,
+    "dy_cross_section_pb": null,
+    "filter_efficiency": 1.0,
+    "k_factor": 1.0,
+    "sum_generator_weights": null,
+    "comment": "Null luminosity/cross section keeps absolute cross sections disabled; sum weights are calculated over processed MC files when omitted."
+  },
+  "corrections": {
+    "muon_momentum": {
+      "enabled": true,
+      "seed": 314159,
+      "payload": "../muon-resolution/calibrations/muon_momentum_2016H_bb_be_ee.json",
+      "status": "locally fitted provisional correction"
+    },
+    "muon_efficiency": {
+      "enabled": true,
+      "payload_directory": "../muon-efficiency-sfs",
+      "reconstruction_includes_tight_id": true,
+      "trigger_prescription": "highest-pT selected trigger-matched muon",
+      "uncertainty_prescription": "coherent supplied statistical/systematic up-down maps",
+      "status": "collaborator-provided preliminary/test maps"
+    },
+    "pileup": {
+      "enabled": false,
+      "payload": "../muon-resolution/calibrations/experimental/pileup_nvertices_2016H_bb_be_ee.json",
+      "status": "experimental reconstructed-vertex impact variation; not nominal"
+    }
+  },
+  "background": {
+    "nominal_abcd_anti_isolation": "both",
+    "variation_abcd_anti_isolation": "at_least_one",
+    "sidebands_gev": [[60.0, 75.0], [105.0, 120.0]],
+    "functional_model": "exponential residual after externally normalized prompt subtraction",
+    "status": "provisional until prompt normalization and closure are available"
+  }
+}

@@ -11,6 +11,7 @@ __pycache__/
 **/plots/
 **/smoke-tests/
 **/binning-tests/
+**/outputs/
 *.root
 
 # Original local development tree and source drops. Curated copies live under

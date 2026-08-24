@@ -1,0 +1,17 @@
+name: z-xsec
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - root>=6.30
+  - numpy>=1.26
+  - pyyaml>=6
+  # These are not required by the first RDataFrame counter, but provide the
+  # standard Pythonic HEP histogram/plotting stack for the next iteration.
+  - uproot>=5
+  - awkward>=2
+  - hist>=2
+  - mplhep>=0.3
+  - matplotlib>=3.7
+  - scipy>=1.10
+  - conda-pack>=0.8

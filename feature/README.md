@@ -4,5 +4,7 @@ This directory contains the curated, executable analysis work selected for versi
 
 - `muon-resolution/`: the active BB/BE/EE muon momentum calibration, reusable correction API, pileup study, and Energy Flow Gap analysis.
 - `muon-efficiency-sfs/`: Matthias' reconstruction, trigger, and isolation efficiency scale factors. These are distinct from momentum scale and resolution corrections.
+- `z-x-section/`: local-first inclusive Z-to-dimuon selection, cutflow, and
+  charge/isolation ABCD background study.
 
 The source files were copied from the July 2026 development tree. The original working files remain in place outside this curated tree.

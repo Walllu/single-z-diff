@@ -1,8 +1,13 @@
 import numpy as np
+from pathlib import Path
 
 # Bin edges
 eta_bins = np.linspace(-2.5, 2.5, 11)
 pt_bins = np.linspace(25.0, 100.0, 16)
+
+HERE = Path(__file__).resolve().parent
+EXPECTED_ETA_BINS = len(eta_bins) - 1
+EXPECTED_PT_BINS = len(pt_bins) - 1
 
 
 # Input files
@@ -30,20 +35,64 @@ _MuonIso_systematic_sf = None
 _MuonIso_statistic_sf = None
 
 
+def _load_map(name):
+    """Load one map relative to this module and validate its eta dimension."""
+    values = np.loadtxt(HERE / INPUT_FILES[name], comments="#")
+    if values.ndim != 2 or values.shape[0] != EXPECTED_ETA_BINS:
+        raise ValueError(
+            f"{name} has shape {values.shape}; expected "
+            f"({EXPECTED_ETA_BINS}, number_of_pt_bins)"
+        )
+    return values
+
+
+def _extend_reco_high_pt(values, name):
+    """Repeat the final reconstruction column through the missing high-pT bins."""
+    if values.shape[1] == EXPECTED_PT_BINS:
+        return values
+    if values.shape[1] != 10:
+        raise ValueError(
+            f"{name} has {values.shape[1]} pT columns; expected either 10 "
+            f"(with high-pT extrapolation) or {EXPECTED_PT_BINS}"
+        )
+    missing = EXPECTED_PT_BINS - values.shape[1]
+    return np.pad(values, ((0, 0), (0, missing)), mode="edge")
+
+
 def _load_sf_maps():
     """Load the scale factor maps once."""
     global _MuonReco_nominal_sf, _MuonReco_systematic_sf, _MuonReco_statistic_sf, _MuonTrigger_nominal_sf, _MuonTrigger_systematic_sf, _MuonTrigger_statistic_sf, _MuonIso_nominal_sf, _MuonIso_systematic_sf, _MuonIso_statistic_sf
 
     if _MuonReco_nominal_sf is None:
-        _MuonReco_nominal_sf = np.loadtxt(INPUT_FILES["MuonReco_nominal"], comments="#")
-        _MuonReco_systematic_sf = np.loadtxt(INPUT_FILES["MuonReco_systematic"], comments="#")
-        _MuonReco_statistic_sf = np.loadtxt(INPUT_FILES["MuonReco_statistic"], comments="#")
-        _MuonTrigger_nominal_sf = np.loadtxt(INPUT_FILES["MuonTrigger_nominal"], comments="#")
-        _MuonTrigger_systematic_sf = np.loadtxt(INPUT_FILES["MuonTrigger_systematic"], comments="#")
-        _MuonTrigger_statistic_sf = np.loadtxt(INPUT_FILES["MuonTrigger_statistic"], comments="#")
-        _MuonIso_nominal_sf = np.loadtxt(INPUT_FILES["MuonIso_nominal"], comments="#")
-        _MuonIso_systematic_sf = np.loadtxt(INPUT_FILES["MuonIso_systematic"], comments="#")
-        _MuonIso_statistic_sf = np.loadtxt(INPUT_FILES["MuonIso_statistic"], comments="#")
+        _MuonReco_nominal_sf = _extend_reco_high_pt(
+            _load_map("MuonReco_nominal"), "MuonReco_nominal"
+        )
+        _MuonReco_systematic_sf = _extend_reco_high_pt(
+            _load_map("MuonReco_systematic"), "MuonReco_systematic"
+        )
+        _MuonReco_statistic_sf = _extend_reco_high_pt(
+            _load_map("MuonReco_statistic"), "MuonReco_statistic"
+        )
+        _MuonTrigger_nominal_sf = _load_map("MuonTrigger_nominal")
+        _MuonTrigger_systematic_sf = _load_map("MuonTrigger_systematic")
+        _MuonTrigger_statistic_sf = _load_map("MuonTrigger_statistic")
+        _MuonIso_nominal_sf = _load_map("MuonIso_nominal")
+        _MuonIso_systematic_sf = _load_map("MuonIso_systematic")
+        _MuonIso_statistic_sf = _load_map("MuonIso_statistic")
+
+        for name, values in (
+            ("MuonTrigger_nominal", _MuonTrigger_nominal_sf),
+            ("MuonTrigger_systematic", _MuonTrigger_systematic_sf),
+            ("MuonTrigger_statistic", _MuonTrigger_statistic_sf),
+            ("MuonIso_nominal", _MuonIso_nominal_sf),
+            ("MuonIso_systematic", _MuonIso_systematic_sf),
+            ("MuonIso_statistic", _MuonIso_statistic_sf),
+        ):
+            if values.shape[1] != EXPECTED_PT_BINS:
+                raise ValueError(
+                    f"{name} has {values.shape[1]} pT columns; "
+                    f"expected {EXPECTED_PT_BINS}"
+                )
 
 
 def getMuonRecoSF(pt, eta, variation=0):
