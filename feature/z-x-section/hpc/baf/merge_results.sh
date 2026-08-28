@@ -15,8 +15,11 @@ workdir="/jwd/z-xsec-merge-$run_label-$$"
 mkdir -p "$workdir/source" "$workdir/env"
 tar -xzf "$software/single-z-diff-z-xsec.tar.gz" -C "$workdir/source"
 tar -xzf "$software/z-xsec-env.tar.gz" -C "$workdir/env"
+
+set +u
 source "$workdir/env/bin/activate"
 conda-unpack
+set -u
 
 python -u "$workdir/source/feature/z-x-section/hpc/baf/merge_abcd_parts.py" \
     "$result_root/parts" \

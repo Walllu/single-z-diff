@@ -40,8 +40,14 @@ mkdir -p "$source_dir" "$env_dir"
 
 tar -xzf "$software/single-z-diff-z-xsec.tar.gz" -C "$source_dir"
 tar -xzf "$software/z-xsec-env.tar.gz" -C "$env_dir"
+
+# Conda's generated activation script probes variables such as CONDA_PREFIX
+# before defining them. Temporarily disable nounset while activating and
+# relocating the conda-pack environment, then restore strict worker settings.
+set +u
 source "$env_dir/bin/activate"
 conda-unpack
+set -u
 
 input_option="--data-files-from"
 if [[ "$sample" == "mc" ]]; then
