@@ -26,6 +26,10 @@ python -u "$workdir/source/feature/z-x-section/hpc/baf/merge_abcd_parts.py" \
     --output-dir "$result_root/merged" \
     --label full_sideband_input
 
+python -u "$workdir/source/feature/z-x-section/hpc/baf/merge_measurement_parts.py" \
+    "$result_root/parts" \
+    --output-dir "$result_root/merged/measurement_inputs"
+
 plot_args=()
 if [[ -n "$prompt_scale" ]]; then
     plot_args+=(--prompt-scale "$prompt_scale")
@@ -36,5 +40,11 @@ python -u "$workdir/source/feature/z-x-section/plot_abcd_diagnostics.py" \
     --label full_sideband_closure \
     "${plot_args[@]}"
 
+python -u "$workdir/source/feature/z-x-section/derive_missing_background_envelope.py" \
+    "$result_root/plots/full_sideband_closure/closure_summary.json" \
+    --output "$result_root/merged/missing_background_envelope.json"
+
 echo "Merged skims: $result_root/merged/full_sideband_input"
+echo "Measurement inputs: $result_root/merged/measurement_inputs/measurement_inputs.json"
 echo "Closure outputs: $result_root/plots/full_sideband_closure"
+echo "Missing-background envelope: $result_root/merged/missing_background_envelope.json"

@@ -17,13 +17,17 @@
     "alternate_reporting_mass_window_gev": [50.0, 120.0]
   },
   "normalization": {
-    "golden_json": null,
+    "golden_json": "../../Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt",
+    "golden_json_source": "https://opendata.cern.ch/record/14220",
     "luminosity_pb_inverse": null,
-    "dy_cross_section_pb": null,
+    "dy_cross_section_pb": 2116.0,
+    "dy_cross_section_integration_uncertainty_pb": 0.9883,
+    "dy_cross_section_source": "https://opendata.cern.ch/record/cms-75481",
+    "matching_efficiency": 1.0,
     "filter_efficiency": 1.0,
     "k_factor": 1.0,
     "sum_generator_weights": null,
-    "comment": "Null luminosity/cross section keeps absolute cross sections disabled; sum weights are calculated over processed MC files when omitted."
+    "comment": "The official CMS Open Data generator cross section is 2116 pb with unit matching/filter efficiencies. Null luminosity keeps worker-level absolute normalization disabled; distributed jobs additionally force deferred normalization."
   },
   "corrections": {
     "muon_momentum": {

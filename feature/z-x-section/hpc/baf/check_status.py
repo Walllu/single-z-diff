@@ -29,16 +29,25 @@ def main() -> int:
         raise RuntimeError("BUDDY is not set")
     parts = Path(buddy) / "z-xsec/results" / metadata["run_label"] / "parts"
     complete = True
-    for sample in ("data", "mc"):
+    for sample in metadata["samples"]:
         expected = manifest_paths(submit, sample)
         observed: list[str] = []
         successful_parts = 0
-        for summary_file in sorted((parts / sample).glob("part_*/summary.json")):
-            if not (summary_file.parent / "SUCCESS").is_file():
+        for part in sorted((parts / sample).glob("part_*")):
+            if not (part / "SUCCESS").is_file():
                 continue
             successful_parts += 1
-            payload = json.loads(summary_file.read_text())
-            observed.extend(payload["samples"][sample]["files"])
+            measurement_file = part / "measurement_summary.json"
+            if not measurement_file.is_file():
+                print(f"  missing measurement summary: {measurement_file}")
+                complete = False
+                continue
+            measurement = json.loads(measurement_file.read_text())
+            result_key = "data" if sample == "data" else "mc"
+            observed.extend(measurement["results"][result_key]["files"])
+            if sample in ("data", "mc") and not (part / "summary.json").is_file():
+                print(f"  missing closure summary: {part / 'summary.json'}")
+                complete = False
         counts = Counter(observed)
         observed_set = set(observed)
         missing = sorted(expected - observed_set)

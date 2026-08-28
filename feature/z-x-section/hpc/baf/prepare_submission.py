@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Prepare a reproducible BAF HTCondor array for the ABCD sideband skim."""
+"""Prepare a BAF array for closure skims and additive cross-section inputs."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import re
 import shutil
 from pathlib import Path
 
@@ -21,12 +22,32 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--run-label", required=True)
     parser.add_argument("--data-files-per-job", type=int, default=10)
     parser.add_argument("--mc-files-per-job", type=int, default=10)
+    parser.add_argument("--background", action="append", default=[], metavar="NAME=DIR",
+                        help="Optional prompt-background MC sample; may be repeated")
+    parser.add_argument("--background-files-per-job", type=int, default=10)
     args = parser.parse_args()
-    if args.data_files_per_job < 1 or args.mc_files_per_job < 1:
+    if min(args.data_files_per_job, args.mc_files_per_job,
+           args.background_files_per_job) < 1:
         parser.error("files-per-job values must be positive")
     if any(character.isspace() for character in args.run_label):
         parser.error("--run-label may not contain whitespace")
     return args
+
+
+def backgrounds(values: list[str]) -> list[tuple[str, Path]]:
+    result = []
+    seen = set()
+    for value in values:
+        if "=" not in value:
+            raise ValueError(f"Background must be NAME=DIR, got {value!r}")
+        name, directory = value.split("=", 1)
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", name):
+            raise ValueError(f"Unsafe background name: {name!r}")
+        if name in seen:
+            raise ValueError(f"Duplicate background name: {name}")
+        seen.add(name)
+        result.append((name, Path(directory).expanduser()))
+    return result
 
 
 def root_files(directory: Path) -> list[Path]:
@@ -59,10 +80,12 @@ def main() -> int:
 
     rows: list[tuple[str, Path, str]] = []
     counts: dict[str, tuple[int, int]] = {}
-    for sample, directory, per_job in (
+    specifications = [
         ("data", args.data_dir, args.data_files_per_job),
         ("mc", args.mc_dir, args.mc_files_per_job),
-    ):
+    ] + [(f"background__{name}", directory, args.background_files_per_job)
+         for name, directory in backgrounds(args.background)]
+    for sample, directory, per_job in specifications:
         files = root_files(directory)
         groups = chunks(files, per_job)
         counts[sample] = (len(files), len(groups))
@@ -80,6 +103,7 @@ def main() -> int:
         "mc_directory": str(args.mc_dir.expanduser().resolve()),
         "data_files_per_job": args.data_files_per_job,
         "mc_files_per_job": args.mc_files_per_job,
+        "background_files_per_job": args.background_files_per_job,
         "samples": {
             sample: {"files": number_files, "jobs": number_jobs}
             for sample, (number_files, number_jobs) in counts.items()

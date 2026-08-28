@@ -14,6 +14,13 @@ __pycache__/
 **/outputs/
 *.root
 
+# Local HPC inventory paste/comparison products (utilities remain versioned)
+feature/z-x-section/hpc/dataset*.txt
+feature/z-x-section/hpc/dataset_comparison.json
+feature/z-x-section/hpc/dump.txt
+feature/z-x-section/hpc/missing_from_cephfs.txt
+feature/z-x-section/hpc/replace_on_cephfs.txt
+
 # Original local development tree and source drops. Curated copies live under
 # feature/, reference/, and archive/.
 /muon-resolution/

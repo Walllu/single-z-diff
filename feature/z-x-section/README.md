@@ -3,9 +3,10 @@
 This directory contains a local-first reconstruction and background-control
 workflow for a fast inclusive `Z -> mu+ mu-` cross-section exercise. It now
 contains reconstructed selection and background controls plus a configurable
-dressed-generator-muon acceptance/efficiency pass. Absolute cross sections
-remain disabled until the external luminosity and normalization metadata are
-provided.
+dressed-generator-muon acceptance/efficiency pass. The distributed workflow
+now produces additive inputs for a separate finalization stage. Absolute cross
+sections remain disabled until approved luminosity and sample-normalization
+metadata are provided.
 
 ## Why PyROOT RDataFrame
 
@@ -149,9 +150,10 @@ a PDG-23 ancestor, dressed with PDG-23-descended stable photons within
 `deltaR < 0.1`. Both truth and reconstruction use `80-100 GeV`, `pT > 25 GeV`,
 and `|eta| < 2.4` by default.
 
-Set `normalization.golden_json` to a standard CMS run/luminosity-section JSON
-to enable certified-data filtering. Leaving it null passes every local event
-and is recorded in the output configuration.
+Certified-data filtering is enabled with the official CMS 2016 legacy JSON
+`Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt` stored at the
+repository root. Run2016H data naturally restrict it to certified runs
+281613-284044. Do not disable this filter for production.
 
 Run the complete local measurement pass with:
 
@@ -182,6 +184,74 @@ The script reports both interpretations once luminosity is configured:
 sigma_fid  = (Ndata - Nbkg) / (efficiency * luminosity)
 sigma_full = (Ndata - Nbkg) / (acceptance * efficiency * luminosity)
 ```
+
+For distributed processing, always add `--defer-normalization`. Each job then
+stores raw signed-weight sums and squared-weight sums; global acceptance and
+efficiency ratios are formed only by `hpc/baf/merge_measurement_parts.py`.
+Per-job acceptance/efficiency values must never be averaged.
+
+## Luminosity and final cross section
+
+The merged measurement payload includes every observed `(run, lumisection)`
+pair and writes a compact `processed_lumis.json`. That inventory is the
+event-side input to the luminosity calculation; it is not itself an integrated
+luminosity. Intersect it with the same golden JSON used during event selection:
+
+```bash
+python feature/z-x-section/prepare_luminosity.py \
+  merged/measurement_inputs/processed_lumis.json \
+  --golden-json PATH_TO_2016_GOLDEN_JSON \
+  --output-dir merged/luminosity
+```
+
+The output prints the `brilcalc lumi` command. Run that command with the
+collaboration-approved normtag, then repeat with `--brilcalc-csv luminosity.csv`
+to produce `luminosity_summary.json`. The finalizer accepts either its value via
+`luminosity.summary_json` or a reviewed direct value in
+`luminosity.integrated_pb_inverse`.
+
+Copy `finalization_config.template.json`, replace every applicable placeholder,
+and run:
+
+```bash
+python feature/z-x-section/finalize_z_cross_section.py \
+  merged/measurement_inputs/measurement_inputs.json \
+  --config finalization_config.json \
+  --output-dir final/cross_section
+```
+
+The finalizer applies luminosity, sample cross sections, generator-weight
+denominators, filter efficiencies, k-factors, muon-SF variations, acceptance
+and efficiency, ABCD closure uncertainty, and the remaining configured
+systematics. Prompt backgrounds have two explicit policies:
+
+- `explicit`: process each available prompt sample and provide its cross
+  section/filter efficiency/k-factor/normalization uncertainty;
+- `missing_uncertainty`: subtract no prompt central value and propagate a
+  documented absolute or fractional missing-component envelope.
+
+Until explicit non-Z prompt samples are available, derive the unresolved
+background envelope from the full-statistics closure result:
+
+```bash
+python feature/z-x-section/derive_missing_background_envelope.py \
+  "$BUDDY/z-xsec/results/RUN_LABEL/plots/full_sideband_closure/closure_summary.json" \
+  --output "$BUDDY/z-xsec/results/RUN_LABEL/merged/missing_background_envelope.json"
+```
+
+Set `prompt_backgrounds.missing_component.envelope_json` in the finalization
+configuration to that output. The envelope is the maximum of the two
+anti-isolation definitions, low-only/high-only closure transfers, and
+width-scaled one-sided 95% residual bounds. It is a total unresolved-background
+model uncertainty, so the same method shifts must not be added again as
+independent systematics.
+
+The checked-in signal metadata uses the official CMS Open Data generator value
+`2116 pb` for the `ZToMuMu M=50-120 GeV` sample, with unit matching and filter
+efficiencies. It normalizes expected-yield and control-region diagnostics only;
+the measured cross section remains data-driven. The template has no arbitrary
+fractional missing-background default: a full-statistics envelope JSON or
+explicit prompt samples are required before interpreting the result.
 
 The smooth sideband diagnostic is run with:
 
@@ -214,3 +284,6 @@ An arbitrary subset of Run2016H files does not have a known luminosity simply
 from its event or file fraction. A final cross-section result should run over
 the complete certified data sample on the HPC, or over a demonstrably complete
 set of luminosity sections with a separately calculated effective luminosity.
+The golden JSON must also be active in `measurement_config.json` during the
+event pass; intersecting lumisections after processing cannot remove events
+that were already counted.

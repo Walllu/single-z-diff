@@ -34,6 +34,12 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--mc-files-from", type=Path,
                         help="Read MC ROOT paths from a manifest instead of --mc-dir")
     parser.add_argument("--sample", choices=("data", "mc", "both"), default="both")
+    parser.add_argument("--mc-role", choices=("signal", "background"), default="signal",
+                        help="Interpret the MC as the Z signal or as a prompt background")
+    parser.add_argument("--process-name", default="z_to_mumu",
+                        help="Stable process label recorded in the output")
+    parser.add_argument("--defer-normalization", action="store_true",
+                        help="Keep MC yields in raw genWeight units for distributed merging")
     parser.add_argument("--max-files", type=int, default=-1, help="Per sample")
     parser.add_argument("--max-events", type=int, default=-1, help="Per sample")
     parser.add_argument("--threads", type=int, default=1)
@@ -309,18 +315,20 @@ def report_rows(report: Any) -> list[dict[str, float | int | str]]:
     return result
 
 
-def normalization(config: dict[str, Any], processed_sumw: float) -> tuple[float, dict[str, Any]]:
+def normalization(config: dict[str, Any], processed_sumw: float,
+                  defer: bool = False) -> tuple[float, dict[str, Any]]:
     norm = config["normalization"]
     denominator = norm["sum_generator_weights"]
     denominator = processed_sumw if denominator is None else float(denominator)
     required = (norm["luminosity_pb_inverse"], norm["dy_cross_section_pb"])
-    ready = all(value is not None for value in required) and denominator != 0.0
+    ready = all(value is not None for value in required) and denominator != 0.0 and not defer
     factor = 1.0
     if ready:
         factor = (float(norm["luminosity_pb_inverse"]) * float(norm["dy_cross_section_pb"])
                   * float(norm["filter_efficiency"]) * float(norm["k_factor"]) / denominator)
     return factor, {
         "absolute_ready": ready,
+        "deferred_to_final_stage": defer,
         "factor": factor,
         "processed_sum_generator_weights": processed_sumw,
         "normalization_sum_generator_weights": denominator,
@@ -340,7 +348,7 @@ def process_mc(files: list[Path], rejected: list[dict[str, str]], args: argparse
     if args.max_events >= 0:
         rdf = rdf.Range(min(args.max_events, int(chain.GetEntries())))
     processed_sumw = float(rdf.Sum("genWeight").GetValue())
-    norm_factor, norm_info = normalization(config, processed_sumw)
+    norm_factor, norm_info = normalization(config, processed_sumw, args.defer_normalization)
     corr = config["corrections"]
     apply_momentum = corr["muon_momentum"]["enabled"] and not args.no_muon_momentum
     apply_sf = corr["muon_efficiency"]["enabled"] and not args.no_muon_efficiency
@@ -387,6 +395,9 @@ def process_mc(files: list[Path], rejected: list[dict[str, str]], args: argparse
     node = (node
             .Define("lead_rel_iso", "zxs::relative_isolation(analysisMuonPt,muonIsoCharged,muonIsoNeutral,muonIsoPhoton,muonIsoPU,lead_index)")
             .Define("sublead_rel_iso", "zxs::relative_isolation(analysisMuonPt,muonIsoCharged,muonIsoNeutral,muonIsoPhoton,muonIsoPU,sublead_index)")
+            .Define("charge_product", "lead_charge*sublead_charge")
+            .Define("iso_state_both", "zxs::isolation_state(lead_rel_iso,sublead_rel_iso,0.15,0.25,true)")
+            .Define("iso_state_at_least_one", "zxs::isolation_state(lead_rel_iso,sublead_rel_iso,0.15,0.25,false)")
             .Define("selected_signal", "lead_charge*sublead_charge<0 && lead_rel_iso<0.15 && sublead_rel_iso<0.15")
             .Define("truth_reco_matched", f"zxm::truth_matched(truth_z,lead_eta,lead_phi,lead_charge,sublead_eta,sublead_phi,sublead_charge,{reco['truth_match_dr']})"))
 
@@ -429,6 +440,16 @@ def process_mc(files: list[Path], rejected: list[dict[str, str]], args: argparse
         node = node.Define(f"event_weight_{name}", expression)
     selected = node.Filter("selected_signal", "OS isolated signal")
     matched = selected.Filter("truth_z.fiducial && truth_reco_matched", "truth fiducial matched selected")
+    region_nodes = {
+        mode: {
+            "A": node.Filter(f"charge_product<0 && {state}==1"),
+            "B": node.Filter(f"charge_product>0 && {state}==1"),
+            "C": node.Filter(f"charge_product<0 && {state}==-1"),
+            "D": node.Filter(f"charge_product>0 && {state}==-1"),
+        }
+        for mode, state in (("both", "iso_state_both"),
+                            ("at_least_one", "iso_state_at_least_one"))
+    }
     reconstruction_report = matched.Report()
 
     truth_actions = {
@@ -442,15 +463,26 @@ def process_mc(files: list[Path], rejected: list[dict[str, str]], args: argparse
     reconstruction_actions = {
         name: action(current, "gen_base_weight") for name, current in reconstruction_nodes.items()
     }
+    region_actions = {
+        mode: {name: action(current, "event_weight_nominal")
+               for name, current in regions.items()}
+        for mode, regions in region_nodes.items()
+    }
     all_actions = [
         x for group in (*truth_actions.values(), *variation_actions.values(),
-                        *reconstruction_actions.values()) for x in group
+                        *reconstruction_actions.values(),
+                        *(value for group in region_actions.values() for value in group.values()))
+        for x in group
     ]
     ROOT.RDF.RunGraphs(all_actions)
     yields = {name: values(group) for name, group in truth_actions.items()}
     variation_yields = {name: values(group) for name, group in variation_actions.items()}
     weighted_reconstruction_cutflow = {
         name: values(group) for name, group in reconstruction_actions.items()
+    }
+    region_yields = {
+        mode: {name: values(group) for name, group in regions.items()}
+        for mode, regions in region_actions.items()
     }
     total = yields["truth_total"]["sum_weights"]
     fiducial = yields["truth_fiducial"]["sum_weights"]
@@ -469,6 +501,10 @@ def process_mc(files: list[Path], rejected: list[dict[str, str]], args: argparse
         for name, value in variation_yields.items()
     }
     result = {
+        "schema_version": 2,
+        "sample_kind": "mc",
+        "process_name": args.process_name,
+        "mc_role": args.mc_role,
         "files": [str(path.resolve()) for path in files],
         "rejected_files": rejected,
         "normalization": norm_info,
@@ -476,6 +512,7 @@ def process_mc(files: list[Path], rejected: list[dict[str, str]], args: argparse
                         "experimental_pileup": apply_pu, "momentum_seed": seed},
         "yields": yields,
         "variation_yields": variation_yields,
+        "regions_by_anti_isolation": region_yields,
         "variation_efficiencies": variation_efficiencies,
         "reconstruction_cutflow": report_rows(reconstruction_report),
         "weighted_reconstruction_cutflow": weighted_reconstruction_cutflow,
@@ -498,6 +535,10 @@ def process_data(files: list[Path], rejected: list[dict[str, str]], args: argpar
     rdf = ROOT.RDataFrame(chain)
     if args.max_events >= 0:
         rdf = rdf.Range(min(args.max_events, int(chain.GetEntries())))
+    lumi_keys_action = rdf.Define(
+        "zxm_processed_lumi_key",
+        "(static_cast<unsigned long long>(run) << 32) | static_cast<unsigned long long>(lumi)",
+    ).Take["unsigned long long"]("zxm_processed_lumi_key")
     reco = config["physics_definition"]["reconstruction"]
     mass = reco["mass_window_gev"]
     node = (rdf.Filter("zxm::certified_lumi(run,lumi)", "certified luminosity section")
@@ -518,20 +559,38 @@ def process_data(files: list[Path], rejected: list[dict[str, str]], args: argpar
             .Define("lead_rel_iso", "zxs::relative_isolation(muonPt,muonIsoCharged,muonIsoNeutral,muonIsoPhoton,muonIsoPU,lead_index)")
             .Define("sublead_rel_iso", "zxs::relative_isolation(muonPt,muonIsoCharged,muonIsoNeutral,muonIsoPhoton,muonIsoPU,sublead_index)")
             .Define("charge_product", "lead_charge*sublead_charge")
-            .Define("iso_state_both", "zxs::isolation_state(lead_rel_iso,sublead_rel_iso,0.15,0.25,true)"))
-    regions = {
-        "A": node.Filter("charge_product<0 && iso_state_both==1"),
-        "B": node.Filter("charge_product>0 && iso_state_both==1"),
-        "C": node.Filter("charge_product<0 && iso_state_both==-1"),
-        "D": node.Filter("charge_product>0 && iso_state_both==-1"),
+            .Define("iso_state_both", "zxs::isolation_state(lead_rel_iso,sublead_rel_iso,0.15,0.25,true)")
+            .Define("iso_state_at_least_one", "zxs::isolation_state(lead_rel_iso,sublead_rel_iso,0.15,0.25,false)"))
+    regions_by_mode = {
+        mode: {
+            "A": node.Filter(f"charge_product<0 && {state}==1"),
+            "B": node.Filter(f"charge_product>0 && {state}==1"),
+            "C": node.Filter(f"charge_product<0 && {state}==-1"),
+            "D": node.Filter(f"charge_product>0 && {state}==-1"),
+        }
+        for mode, state in (("both", "iso_state_both"),
+                            ("at_least_one", "iso_state_at_least_one"))
     }
+    regions = regions_by_mode["both"]
     common_report = node.Report()
-    actions = {name: current.Count() for name, current in regions.items()}
-    ROOT.RDF.RunGraphs(list(actions.values()))
-    counts = {name: int(value.GetValue()) for name, value in actions.items()}
+    actions = {
+        mode: {name: current.Count() for name, current in region_nodes.items()}
+        for mode, region_nodes in regions_by_mode.items()
+    }
+    ROOT.RDF.RunGraphs([lumi_keys_action] + [value for group in actions.values() for value in group.values()])
+    counts_by_mode = {
+        mode: {name: int(value.GetValue()) for name, value in group.items()}
+        for mode, group in actions.items()
+    }
+    counts = counts_by_mode["both"]
     background = None if counts["D"] == 0 else counts["B"] * counts["C"] / counts["D"]
-    result = {"files": [str(path.resolve()) for path in files], "rejected_files": rejected,
-              "regions": counts, "raw_abcd_background": background,
+    lumi_pairs = sorted({(int(key) >> 32, int(key) & 0xFFFFFFFF)
+                         for key in lumi_keys_action.GetValue()})
+    result = {"schema_version": 2, "sample_kind": "data", "process_name": "data",
+              "files": [str(path.resolve()) for path in files], "rejected_files": rejected,
+              "processed_luminosity_sections": [[run, lumi] for run, lumi in lumi_pairs],
+              "regions": counts, "regions_by_anti_isolation": counts_by_mode,
+              "raw_abcd_background": background,
               "reconstruction_cutflow": report_rows(common_report)}
     if args.write_selected_skim:
         regions["A"].Snapshot("Events", str(output / "data_selected.root"),

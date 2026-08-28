@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "luminosity": {
+    "integrated_pb_inverse": null,
+    "summary_json": null,
+    "uncertainty_fraction": 0.012,
+    "source": "REPLACE with approved certified-luminosity result for the processed run/lumisection set"
+  },
+  "signal_sample": {
+    "cross_section_pb": 2116.0,
+    "cross_section_integration_uncertainty_pb": 0.9883,
+    "metadata_source": "https://opendata.cern.ch/record/cms-75481",
+    "matching_efficiency": 1.0,
+    "filter_efficiency": 1.0,
+    "k_factor": 1.0,
+    "sum_generator_weights": null,
+    "normalization_uncertainty_fraction": 0.0,
+    "note": "Official CMS Open Data generator value for ZToMuMu M=50-120 GeV; only needed for expected-yield/control-region diagnostics. Acceptance and efficiency use ratios of raw global sums."
+  },
+  "nonprompt_background": {
+    "anti_isolation_mode": "both",
+    "subtract_signal_leakage": false,
+    "closure_factor": 1.0,
+    "closure_factor_uncertainty_fraction": 0.0,
+    "additional_uncertainty_fraction": 0.0
+  },
+  "prompt_backgrounds": {
+    "mode": "missing_uncertainty",
+    "missing_component": {
+      "fraction_of_candidate_yield": 0.0,
+      "absolute_events": 0.0,
+      "envelope_json": null,
+      "note": "Set envelope_json to the output of derive_missing_background_envelope.py after full-statistics closure, or switch mode to explicit."
+    },
+    "samples": [
+      {
+        "process_name": "ttbar",
+        "cross_section_pb": null,
+        "filter_efficiency": 1.0,
+        "k_factor": 1.0,
+        "sum_generator_weights": null,
+        "normalization_uncertainty_fraction": 0.0
+      }
+    ]
+  },
+  "systematics": {
+    "acceptance_modeling_fraction": 0.0,
+    "efficiency_additional_fraction": 0.0,
+    "muon_momentum_fraction": 0.0,
+    "pileup_fraction": 0.0,
+    "note": "Zero entries are explicit placeholders, not claims of zero uncertainty."
+  }
+}

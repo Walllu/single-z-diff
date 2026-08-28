@@ -27,6 +27,7 @@ $BUDDY/z-xsec/
     parts/mc/part_CLUSTER_PROC/     independent MC outputs
     logs/                            worker stdout/stderr
     merged/full_sideband_input/     merged ROOT skims and cutflow
+    merged/measurement_inputs/      additive global acceptance/efficiency inputs
     plots/full_sideband_closure/    closure JSON and SVG plots
 ```
 
@@ -131,6 +132,19 @@ cd "$HOME/z-xsec-submit/full_sideband_v1"
 condor_submit submit.jdl
 ```
 
+Optional prompt-background samples use a stable process label and can be
+included in the same array:
+
+```bash
+  --background ttbar=/cephfs/path/to/TTbar \
+  --background ww=/cephfs/path/to/WW \
+  --background-files-per-job 10
+```
+
+Background jobs skip the large closure skim and emit only additive measurement
+inputs. If no such samples are provided, the finalizer can instead use the
+explicit `missing_uncertainty` policy.
+
 The generated JDL requests four CPUs, 8 GB RAM, no GPU, Rocky9, two hours, and
 high CephFS I/O. Do not increase concurrency blindly: start with these bundles,
 measure throughput, and avoid saturating shared CephFS.
@@ -179,7 +193,12 @@ double counting a separately resubmitted job. It sums event counts, signed
 weights, squared weights, cutflows, and ABCD regions, then uses `hadd` for the
 ROOT skims. Finally it regenerates the closure diagnostics.
 
-The default closure plot still uses the provisional peak-derived DY scale. If
+The merge also writes
+`merged/measurement_inputs/measurement_inputs.json` and
+`processed_lumis.json`, and derives
+`merged/missing_background_envelope.json` from the closure diagnostics. The
+default closure plot still uses the provisional
+peak-derived DY scale. If
 an independently derived prompt normalization is available, pass it as the
 second argument:
 
@@ -187,12 +206,11 @@ second argument:
 bash "$BUDDY/z-xsec/software/merge_results.sh" full_sideband_v1 PROMPT_SCALE
 ```
 
-## Scope of this first driver
+## Finalization boundary
 
-This array deliberately prioritizes the full-statistics sideband closure pass.
-The acceptance/efficiency script also accepts `--data-files-from` and
-`--mc-files-from`, but its distributed MC summaries should not be combined
-until a global generator-weight denominator and luminosity normalization are
-frozen. Per-chunk normalization would be incorrect. Once closure is available,
-the corrected measurement can either run as one larger RDataFrame job or gain a
-separate reducer that combines its unnormalized sufficient statistics.
+Workers never apply an absolute MC normalization. The reducer sums raw
+generator weights, squared weights, truth/reconstruction numerators, ABCD
+regions, variations, and the data lumisection inventory. Only the finalizer
+uses luminosity, cross sections, filter efficiencies, k-factors, and the
+systematic model. See the main `feature/z-x-section/README.md` for the
+luminosity and finalization commands.
