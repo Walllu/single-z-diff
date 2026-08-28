@@ -16,6 +16,14 @@ def safe_ratio(numerator: float, denominator: float) -> float | None:
 
 def mode_components(payload: dict[str, Any], mode: str, confidence_z: float) -> dict[str, Any]:
     result = payload["results"][mode]
+    closure = result.get("closure_factor") or {}
+    if closure.get("value") is None or closure.get("variance") is None:
+        return {
+            "available": False,
+            "reason": "ABCD closure factor is undefined, usually because a required sideband control region is empty",
+            "closure_factor": closure.get("value"),
+            "closure_factor_stat_uncertainty": None,
+        }
     windows = result["windows"]
     signal = windows["signal"]
     kappa = float(result["closure_factor"]["value"])
@@ -60,6 +68,7 @@ def mode_components(payload: dict[str, Any], mode: str, confidence_z: float) -> 
             "width_scaled_upper_events_in_signal_window": upper * signal_width / width,
         }
     return {
+        "available": True,
         "closure_factor": kappa,
         "closure_factor_stat_uncertainty": math.sqrt(max(0.0, kappa_variance)),
         "nominal_signal_window_background": nominal_background,
@@ -81,14 +90,34 @@ def main() -> int:
     modes = {mode: mode_components(source, mode, args.confidence_z)
              for mode in ("both", "at_least_one")}
     nominal = modes[args.nominal_mode]
+    if not nominal["available"]:
+        payload = {
+            "schema_version": 1,
+            "title": "Conservative unresolved-background envelope from sideband closure",
+            "status": "insufficient_statistics",
+            "available": False,
+            "source_closure_summary": str(args.closure_summary.resolve()),
+            "nominal_mode": args.nominal_mode,
+            "confidence_z": args.confidence_z,
+            "modes": modes,
+            "components_events": {},
+            "recommended_absolute_events": None,
+            "recommended_fraction_of_candidate_yield": None,
+            "reason": nominal["reason"],
+        }
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(payload, indent=2) + "\n")
+        print(json.dumps({"output": str(args.output.resolve()),
+                          "status": payload["status"],
+                          "reason": payload["reason"]}, indent=2))
+        return 0
     alternate_mode = "at_least_one" if args.nominal_mode == "both" else "both"
-    alternate_shift = abs(
-        modes[alternate_mode]["nominal_signal_window_background"]
-        - nominal["nominal_signal_window_background"]
-    )
-    components: dict[str, float] = {
-        "anti_isolation_definition_shift": alternate_shift,
-    }
+    components: dict[str, float] = {}
+    if modes[alternate_mode]["available"]:
+        components["anti_isolation_definition_shift"] = abs(
+            modes[alternate_mode]["nominal_signal_window_background"]
+            - nominal["nominal_signal_window_background"]
+        )
     for sideband, value in nominal["sideband_closure_variations"].items():
         shift = value["absolute_signal_yield_shift"]
         if shift is not None:
@@ -102,6 +131,8 @@ def main() -> int:
     payload = {
         "schema_version": 1,
         "title": "Conservative unresolved-background envelope from sideband closure",
+        "status": "available",
+        "available": True,
         "source_closure_summary": str(args.closure_summary.resolve()),
         "nominal_mode": args.nominal_mode,
         "confidence_z": args.confidence_z,

@@ -206,9 +206,13 @@ def main() -> int:
             envelope_path = Path(envelope_file)
             if not envelope_path.is_absolute():
                 envelope_path = (args.config.resolve().parent / envelope_path).resolve()
-            envelope_events = float(json.loads(envelope_path.read_text())[
-                "recommended_absolute_events"
-            ])
+            envelope_payload = json.loads(envelope_path.read_text())
+            if not envelope_payload.get("available", True):
+                raise ValueError(
+                    "Configured background envelope is unavailable: "
+                    + str(envelope_payload.get("reason", "insufficient control-region statistics"))
+                )
+            envelope_events = float(envelope_payload["recommended_absolute_events"])
         missing_prompt_uncertainty = quadrature(
             float(missing.get("absolute_events", 0.0)),
             abs(candidate_before_prompt) * float(missing.get("fraction_of_candidate_yield", 0.0)),
