@@ -78,6 +78,7 @@ def merge_cutflow(payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def merge_mc(payloads: list[dict[str, Any]], role: str, name: str) -> dict[str, Any]:
     yields = merge_triple_maps(payloads, "yields")
     variations = merge_triple_maps(payloads, "variation_yields")
+    selected_variations = merge_triple_maps(payloads, "selected_variation_yields")
     regions = merge_nested_triples(payloads, "regions_by_anti_isolation")
     weighted_cutflow = merge_triple_maps(payloads, "weighted_reconstruction_cutflow")
     processed_sumw = sum(float(p["normalization"]["processed_sum_generator_weights"])
@@ -86,8 +87,11 @@ def merge_mc(payloads: list[dict[str, Any]], role: str, name: str) -> dict[str, 
     fiducial = float(yields.get("truth_fiducial", {}).get("sum_weights", 0.0))
     fiducial_eff = float(yields.get("truth_fiducial_pileup_weighted", {}).get("sum_weights", 0.0))
     selected_matched = float(yields.get("selected_truth_matched", {}).get("sum_weights", 0.0))
+    selected_total = float(yields.get("selected", {}).get("sum_weights", 0.0))
     acceptance = ratio(fiducial, total)
     efficiency = ratio(selected_matched, fiducial_eff)
+    purity = ratio(selected_matched, selected_total)
+    net_fiducial_correction = ratio(selected_total, fiducial_eff)
     variation_efficiencies = {
         variation: {
             "efficiency": ratio(float(value["sum_weights"]), fiducial_eff),
@@ -97,6 +101,17 @@ def merge_mc(payloads: list[dict[str, Any]], role: str, name: str) -> dict[str, 
         }
         for variation, value in variations.items()
     }
+    variation_net_fiducial_corrections = {
+        variation: {
+            "correction": ratio(float(value["sum_weights"]), fiducial_eff),
+            "relative_to_nominal": (
+                None if not net_fiducial_correction
+                else float(value["sum_weights"]) / fiducial_eff
+                / net_fiducial_correction - 1.0
+            ),
+        }
+        for variation, value in selected_variations.items()
+    }
     return {
         "process_name": name,
         "mc_role": role,
@@ -104,12 +119,16 @@ def merge_mc(payloads: list[dict[str, Any]], role: str, name: str) -> dict[str, 
         "processed_sum_generator_weights": processed_sumw,
         "yields": yields,
         "variation_yields": variations,
+        "selected_variation_yields": selected_variations,
         "variation_efficiencies": variation_efficiencies,
+        "variation_net_fiducial_corrections": variation_net_fiducial_corrections,
         "regions_by_anti_isolation": regions,
         "reconstruction_cutflow": merge_cutflow(payloads),
         "weighted_reconstruction_cutflow": weighted_cutflow,
         "acceptance": acceptance,
         "efficiency": efficiency,
+        "purity": purity,
+        "net_fiducial_correction": net_fiducial_correction,
         "acceptance_times_efficiency": (
             None if acceptance is None or efficiency is None else acceptance * efficiency
         ),
@@ -190,7 +209,7 @@ def main() -> int:
     lumi_json = compress_lumis(processed_lumis) if processed_lumis else {}
     (output / "processed_lumis.json").write_text(json.dumps(lumi_json, indent=2) + "\n")
     result = {
-        "schema_version": 1,
+        "schema_version": 2,
         "title": "Merged additive inputs for the inclusive Z cross-section",
         "configuration": configuration,
         "provenance": {"part_summaries": [str(path.resolve()) for path in summaries],

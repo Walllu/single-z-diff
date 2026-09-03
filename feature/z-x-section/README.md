@@ -49,7 +49,10 @@ The configuration is collected near the top of `run_z_selection.py`:
 - `|dxy| < 0.05 cm` and `|dz| < 0.10 cm`;
 - the two highest-pT quality muons, selected without using charge or isolation;
 - at least one of those two muons matched to the trigger object;
-- `80 < m(mumu) < 100 GeV`.
+- no additional loose muon above 10 GeV and no PV-associated PF-electron
+  candidate above 10 GeV (the electron leg is an explicit proxy because the
+  custom tree has no reconstructed-electron collection);
+- `76.1876 < m(mumu) < 106.1876 GeV`, i.e. `91.1876 +/- 15 GeV`.
 
 After this common selection, the pair is classified as:
 
@@ -147,8 +150,12 @@ The interpretation of the current local closure result is recorded in
 external-normalization fields, calibration payloads, and explicit provisional
 statuses. The default truth object is the opposite-sign stable-muon pair with
 a PDG-23 ancestor, dressed with PDG-23-descended stable photons within
-`deltaR < 0.1`. Both truth and reconstruction use `80-100 GeV`, `pT > 25 GeV`,
-and `|eta| < 2.4` by default.
+`deltaR < 0.1`. Both truth and reconstruction use
+`76.1876-106.1876 GeV`, `pT > 25 GeV`, and `|eta| < 2.4` by default. The
+reconstructed selection also vetoes additional loose leptons above 10 GeV.
+The muon veto uses `muonIsLoose`; because these ntuples do not contain a full
+electron collection, the electron veto provisionally uses a PF-electron
+candidate with `candFromPV >= 2`.
 
 Certified-data filtering is enabled with the official CMS 2016 legacy JSON
 `Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt` stored at the
@@ -178,11 +185,21 @@ for example `--truth-mass-window 50 120 --reco-mass-window 50 120`. Such a
 wide reconstructed signal region requires a background model validated over a
 still wider control range; the present 60-75/105-120 sidebands would overlap it.
 
-The script reports both interpretations once luminosity is configured:
+The merged signal sample supplies three distinct detector quantities:
 
 ```text
-sigma_fid  = (Ndata - Nbkg) / (efficiency * luminosity)
-sigma_full = (Ndata - Nbkg) / (acceptance * efficiency * luminosity)
+efficiency = selected truth-matched / truth fiducial
+purity     = selected truth-matched / all selected reconstructed
+C_fid      = all selected reconstructed / truth fiducial = efficiency / purity
+```
+
+The purity term accounts for reconstructed candidates migrating into the
+selection from outside the particle-level fiducial region. The script reports
+both interpretations once luminosity is configured:
+
+```text
+sigma_fid  = (Ndata - Nbkg) / (C_fid * luminosity)
+sigma_full = (Ndata - Nbkg) / (acceptance * C_fid * luminosity)
 ```
 
 For distributed processing, always add `--defer-normalization`. Each job then
@@ -223,12 +240,20 @@ python feature/z-x-section/finalize_z_cross_section.py \
 The finalizer applies luminosity, sample cross sections, generator-weight
 denominators, filter efficiencies, k-factors, muon-SF variations, acceptance
 and efficiency, ABCD closure uncertainty, and the remaining configured
-systematics. Prompt backgrounds have two explicit policies:
+systematics. Backgrounds have three explicit policies:
 
 - `explicit`: process each available prompt sample and provide its cross
   section/filter efficiency/k-factor/normalization uncertainty;
+- `manual_fraction`: subtract a documented fraction of the observed candidate
+  yield. The template uses `(30000+41000)/20.4e6 = 0.348%`, transferred from
+  CMS-SMP-17-010 with a conservative 100% relative uncertainty;
 - `missing_uncertainty`: subtract no prompt central value and propagate a
   documented absolute or fractional missing-component envelope.
+
+The current nominal template disables the ABCD subtraction and treats the
+manual literature fraction as the total background (prompt plus nonprompt), so
+the two estimates cannot be double counted. ABCD and sideband outputs remain
+diagnostics and can be re-enabled through the finalization configuration.
 
 Until explicit non-Z prompt samples are available, derive the unresolved
 background envelope from the full-statistics closure result:
@@ -249,9 +274,9 @@ independent systematics.
 The checked-in signal metadata uses the official CMS Open Data generator value
 `2116 pb` for the `ZToMuMu M=50-120 GeV` sample, with unit matching and filter
 efficiencies. It normalizes expected-yield and control-region diagnostics only;
-the measured cross section remains data-driven. The template has no arbitrary
-fractional missing-background default: a full-statistics envelope JSON or
-explicit prompt samples are required before interpreting the result.
+the measured cross section remains data-driven. The manual background transfer
+is explicitly provisional; replace it with explicit samples or a validated
+data-driven estimate when those inputs are available.
 
 The smooth sideband diagnostic is run with:
 

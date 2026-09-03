@@ -18,6 +18,7 @@
     "note": "Official CMS Open Data generator value for ZToMuMu M=50-120 GeV; only needed for expected-yield/control-region diagnostics. Acceptance and efficiency use ratios of raw global sums."
   },
   "nonprompt_background": {
+    "mode": "disabled",
     "anti_isolation_mode": "both",
     "subtract_signal_leakage": false,
     "closure_factor": 1.0,
@@ -25,12 +26,19 @@
     "additional_uncertainty_fraction": 0.0
   },
   "prompt_backgrounds": {
-    "mode": "missing_uncertainty",
+    "mode": "manual_fraction",
+    "manual_component": {
+      "fraction_of_observed_candidates": 0.003480392156862745,
+      "uncertainty_fraction_of_observed_candidates": 0.003480392156862745,
+      "source": "CMS-SMP-17-010 Table 1: (30000 resonant + 41000 nonresonant background) / 20.4 million dimuon candidates",
+      "scope": "Provisional total-background transfer, including prompt and nonprompt contributions",
+      "note": "A deliberately conservative 100% relative uncertainty is assigned because this transfers a full-2016 CMS result to the present 2016H Open Data implementation. Replace with explicit samples or a validated data-driven estimate when available."
+    },
     "missing_component": {
       "fraction_of_candidate_yield": 0.0,
       "absolute_events": 0.0,
       "envelope_json": null,
-      "note": "Set envelope_json to the output of derive_missing_background_envelope.py after full-statistics closure, or switch mode to explicit."
+      "note": "Inactive in manual_fraction mode; retained so missing_uncertainty mode can still be selected explicitly."
     },
     "samples": [
       {

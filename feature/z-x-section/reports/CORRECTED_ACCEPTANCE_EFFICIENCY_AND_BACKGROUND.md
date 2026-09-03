@@ -1,5 +1,17 @@
 # Corrected Dressed-Z Acceptance, Efficiency, and Background Prototype
 
+> **September 2026 update.** The checked-in nominal definition now follows the
+> CMS-SMP-17-010-like window `|m_mumu - 91.1876 GeV| < 15 GeV`, rather than the
+> historical `80-100 GeV` prototype documented below. It also vetoes additional
+> loose leptons above 10 GeV. Since the custom tree has no reconstructed-electron
+> collection, that electron veto is explicitly implemented as a PV-associated
+> PF-electron-candidate proxy. The finalizer now uses
+> `C_fid = efficiency / purity`, so reconstructed migration into the fiducial
+> region is included. Its provisional nominal background is a 0.348% literature
+> transfer with a 100% relative uncertainty; ABCD and sidebands are retained as
+> diagnostics. The numerical tables below are historical local results and must
+> not be used for the updated definition without rerunning the event pass.
+
 ## Scope
 
 This iteration makes the local inclusive-Z validation structurally complete

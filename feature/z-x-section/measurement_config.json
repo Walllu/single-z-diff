@@ -3,16 +3,21 @@
   "physics_definition": {
     "boson": "generator particles with a PDG-23 ancestor",
     "dressing_cone_dr": 0.1,
-    "truth_mass_window_gev": [80.0, 100.0],
+    "truth_mass_window_gev": [76.1876, 106.1876],
     "truth_fiducial": {
       "muon_min_pt_gev": 25.0,
       "muon_max_abs_eta": 2.4
     },
     "reconstruction": {
-      "mass_window_gev": [80.0, 100.0],
+      "mass_window_gev": [76.1876, 106.1876],
       "muon_min_pt_gev": 25.0,
       "muon_max_abs_eta": 2.4,
-      "truth_match_dr": 0.1
+      "truth_match_dr": 0.1,
+      "additional_lepton_veto": {
+        "enabled": true,
+        "minimum_pt_gev": 10.0,
+        "electron_definition": "PV-associated PF candidate with candIsElectron != 0 and candFromPV >= 2 (loose-electron proxy)"
+      }
     },
     "alternate_reporting_mass_window_gev": [50.0, 120.0]
   },
@@ -55,6 +60,6 @@
     "variation_abcd_anti_isolation": "at_least_one",
     "sidebands_gev": [[60.0, 75.0], [105.0, 120.0]],
     "functional_model": "exponential residual after externally normalized prompt subtraction",
-    "status": "provisional until prompt normalization and closure are available"
+    "status": "ABCD and sidebands are retained as diagnostics; the nominal cross-section background is a documented literature-transfer fraction"
   }
 }

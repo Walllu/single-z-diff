@@ -43,7 +43,15 @@ SELECTION = {
     "require_pf_muon": True,
     "max_abs_dxy_cm": 0.05,
     "max_abs_dz_cm": 0.10,
-    "mass_window_gev": [80.0, 100.0],
+    "mass_window_gev": [91.1876 - 15.0, 91.1876 + 15.0],
+    "additional_lepton_veto": {
+        "enabled": True,
+        "minimum_pt_gev": 10.0,
+        "electron_definition": (
+            "PV-associated PF candidate with candIsElectron != 0 "
+            "and candFromPV >= 2 (loose-electron proxy)"
+        ),
+    },
 }
 
 ISOLATION = {
@@ -145,6 +153,24 @@ int abcd_region(int charge_product, int iso_state) {
     if (charge_product > 0 && iso_state == -1) return 4; // D
     return 0;
 }
+
+bool passes_additional_lepton_veto(const RVec<float>& muon_pt,
+                                   const RVec<int>& muon_loose,
+                                   const RVec<int>& selected_indices,
+                                   const RVec<float>& candidate_pt,
+                                   const RVec<int>& candidate_is_electron,
+                                   const RVec<int>& candidate_from_pv,
+                                   double minimum_pt) {
+    const int first = selected_indices[0], second = selected_indices[1];
+    for (std::size_t i = 0; i < muon_pt.size(); ++i) {
+        if (static_cast<int>(i) == first || static_cast<int>(i) == second) continue;
+        if (muon_pt[i] > minimum_pt && muon_loose[i] != 0) return false;
+    }
+    for (std::size_t i = 0; i < candidate_pt.size(); ++i)
+        if (candidate_pt[i] > minimum_pt && candidate_is_electron[i] != 0
+            && candidate_from_pv[i] >= 2) return false;
+    return true;
+}
 } // namespace zxs
 """
 
@@ -196,6 +222,10 @@ def arguments() -> argparse.Namespace:
         "--no-trigger-match", action="store_true",
         help="Disable the requirement that at least one selected muon matches the trigger",
     )
+    parser.add_argument(
+        "--no-additional-lepton-veto", action="store_true",
+        help="Disable the extra loose-muon/PF-electron-candidate veto",
+    )
     parser.add_argument("--write-skim", action="store_true",
                         help="Write a compact ROOT tree for requested ABCD regions")
     parser.add_argument(
@@ -218,7 +248,8 @@ def required_branches(is_mc: bool) -> set[str]:
         "run", "lumi", "event", "nMuons", "IsoMu24", "muonPt", "muonEta",
         "muonPhi", "muonMass", "muonCharge", "muonDxy", "muonDz",
         "muonIsoCharged", "muonIsoNeutral", "muonIsoPhoton", "muonIsoPU",
-        "muonIsTight", "muonIsPF", "muonIsTrigMatched",
+        "muonIsLoose", "muonIsTight", "muonIsPF", "muonIsTrigMatched",
+        "candPt", "candIsElectron", "candFromPV",
     }
     if is_mc:
         required.add("genWeight")
@@ -393,6 +424,19 @@ def process_sample(name: str, files: list[Path], rejected_files: list[dict[str, 
     ).Filter("selected_muon_indices.size() >= 2", "at least two quality muons")
     nodes.append(("two_quality_muons", node))
 
+    require_additional_veto = (
+        SELECTION["additional_lepton_veto"]["enabled"]
+        and not args.no_additional_lepton_veto
+    )
+    veto_expression = (
+        "zxs::passes_additional_lepton_veto(muonPt, muonIsLoose, "
+        "selected_muon_indices, candPt, candIsElectron, candFromPV, "
+        f'{SELECTION["additional_lepton_veto"]["minimum_pt_gev"]})'
+        if require_additional_veto else "true"
+    )
+    node = node.Filter(veto_expression, "additional loose-lepton veto")
+    nodes.append(("additional_lepton_veto", node))
+
     node = (
         node.Define("lead_index", "selected_muon_indices[0]")
         .Define("sublead_index", "selected_muon_indices[1]")
@@ -551,6 +595,13 @@ def main() -> int:
             "muon_max_abs_eta": args.muon_max_abs_eta,
             "mass_window_gev": [args.mass_min, args.mass_max],
             "pair_choice": "two highest-pT quality muons, independent of charge and isolation",
+            "additional_lepton_veto": {
+                **SELECTION["additional_lepton_veto"],
+                "enabled": (
+                    SELECTION["additional_lepton_veto"]["enabled"]
+                    and not args.no_additional_lepton_veto
+                ),
+            },
         },
         "isolation": {
             **ISOLATION,

@@ -375,6 +375,14 @@ def process_mc(files: list[Path], rejected: list[dict[str, str]], args: argparse
                         f"zxs::select_quality(analysisMuonPt,muonEta,muonIsTight,muonIsPF,muonDxy,muonDz,{reco['muon_min_pt_gev']},{reco['muon_max_abs_eta']},true,true,0.05,0.10)")
             .Filter("selected_muon_indices.size() >= 2", "two quality muons"))
     reconstruction_nodes["two_quality_muons"] = node
+    veto = reco.get("additional_lepton_veto", {})
+    if veto.get("enabled", False):
+        node = node.Filter(
+            "zxs::passes_additional_lepton_veto(muonPt,muonIsLoose,selected_muon_indices,"
+            f"candPt,candIsElectron,candFromPV,{float(veto['minimum_pt_gev'])})",
+            "additional loose-lepton veto",
+        )
+    reconstruction_nodes["additional_lepton_veto"] = node
     node = (node.Define("lead_index", "selected_muon_indices[0]")
             .Define("sublead_index", "selected_muon_indices[1]")
             .Define("lead_pt", "static_cast<double>(analysisMuonPt[lead_index])")
@@ -460,6 +468,9 @@ def process_mc(files: list[Path], rejected: list[dict[str, str]], args: argparse
         "selected_truth_matched": action(matched, "event_weight_nominal"),
     }
     variation_actions = {name: action(matched, f"event_weight_{name}") for name in variations}
+    selected_variation_actions = {
+        name: action(selected, f"event_weight_{name}") for name in variations
+    }
     reconstruction_actions = {
         name: action(current, "gen_base_weight") for name, current in reconstruction_nodes.items()
     }
@@ -470,6 +481,7 @@ def process_mc(files: list[Path], rejected: list[dict[str, str]], args: argparse
     }
     all_actions = [
         x for group in (*truth_actions.values(), *variation_actions.values(),
+                        *selected_variation_actions.values(),
                         *reconstruction_actions.values(),
                         *(value for group in region_actions.values() for value in group.values()))
         for x in group
@@ -477,6 +489,9 @@ def process_mc(files: list[Path], rejected: list[dict[str, str]], args: argparse
     ROOT.RDF.RunGraphs(all_actions)
     yields = {name: values(group) for name, group in truth_actions.items()}
     variation_yields = {name: values(group) for name, group in variation_actions.items()}
+    selected_variation_yields = {
+        name: values(group) for name, group in selected_variation_actions.items()
+    }
     weighted_reconstruction_cutflow = {
         name: values(group) for name, group in reconstruction_actions.items()
     }
@@ -488,8 +503,11 @@ def process_mc(files: list[Path], rejected: list[dict[str, str]], args: argparse
     fiducial = yields["truth_fiducial"]["sum_weights"]
     fiducial_eff = yields["truth_fiducial_pileup_weighted"]["sum_weights"]
     selected_matched = yields["selected_truth_matched"]["sum_weights"]
+    selected_total = yields["selected"]["sum_weights"]
     acceptance = safe_ratio(fiducial, total)
     efficiency = safe_ratio(selected_matched, fiducial_eff)
+    purity = safe_ratio(selected_matched, selected_total)
+    net_fiducial_correction = safe_ratio(selected_total, fiducial_eff)
     variation_efficiencies = {
         name: {
             "efficiency": safe_ratio(value["sum_weights"], fiducial_eff),
@@ -499,6 +517,17 @@ def process_mc(files: list[Path], rejected: list[dict[str, str]], args: argparse
             ),
         }
         for name, value in variation_yields.items()
+    }
+    variation_net_fiducial_corrections = {
+        name: {
+            "correction": safe_ratio(value["sum_weights"], fiducial_eff),
+            "relative_to_nominal": (
+                None if net_fiducial_correction in (None, 0.0)
+                else safe_ratio(value["sum_weights"], fiducial_eff)
+                / net_fiducial_correction - 1.0
+            ),
+        }
+        for name, value in selected_variation_yields.items()
     }
     result = {
         "schema_version": 2,
@@ -512,12 +541,16 @@ def process_mc(files: list[Path], rejected: list[dict[str, str]], args: argparse
                         "experimental_pileup": apply_pu, "momentum_seed": seed},
         "yields": yields,
         "variation_yields": variation_yields,
+        "selected_variation_yields": selected_variation_yields,
         "regions_by_anti_isolation": region_yields,
         "variation_efficiencies": variation_efficiencies,
+        "variation_net_fiducial_corrections": variation_net_fiducial_corrections,
         "reconstruction_cutflow": report_rows(reconstruction_report),
         "weighted_reconstruction_cutflow": weighted_reconstruction_cutflow,
         "acceptance": acceptance,
         "efficiency": efficiency,
+        "purity": purity,
+        "net_fiducial_correction": net_fiducial_correction,
         "acceptance_times_efficiency": None if acceptance is None or efficiency is None else acceptance * efficiency,
     }
     if args.write_selected_skim:
@@ -546,8 +579,15 @@ def process_data(files: list[Path], rejected: list[dict[str, str]], args: argpar
             .Filter("nMuons >= 2", "two reconstructed muons")
             .Define("selected_muon_indices",
                     f"zxs::select_quality(muonPt,muonEta,muonIsTight,muonIsPF,muonDxy,muonDz,{reco['muon_min_pt_gev']},{reco['muon_max_abs_eta']},true,true,0.05,0.10)")
-            .Filter("selected_muon_indices.size() >= 2", "two quality muons")
-            .Define("lead_index", "selected_muon_indices[0]").Define("sublead_index", "selected_muon_indices[1]")
+            .Filter("selected_muon_indices.size() >= 2", "two quality muons"))
+    veto = reco.get("additional_lepton_veto", {})
+    if veto.get("enabled", False):
+        node = node.Filter(
+            "zxs::passes_additional_lepton_veto(muonPt,muonIsLoose,selected_muon_indices,"
+            f"candPt,candIsElectron,candFromPV,{float(veto['minimum_pt_gev'])})",
+            "additional loose-lepton veto",
+        )
+    node = (node.Define("lead_index", "selected_muon_indices[0]").Define("sublead_index", "selected_muon_indices[1]")
             .Define("lead_trigger_matched", "muonIsTrigMatched[lead_index] != 0")
             .Define("sublead_trigger_matched", "muonIsTrigMatched[sublead_index] != 0")
             .Filter("lead_trigger_matched || sublead_trigger_matched", "selected pair trigger match")
@@ -630,13 +670,18 @@ def main() -> int:
         ndata = results["data"]["regions"]["A"]
         background = results["data"]["raw_abcd_background"]
         signal = None if background is None else ndata - background
-        efficiency = results["mc"]["efficiency"]
+        net_fiducial_correction = results["mc"]["net_fiducial_correction"]
         acceptance = results["mc"]["acceptance"]
         lumi = config["normalization"]["luminosity_pb_inverse"]
         absolute_ready = results["mc"]["normalization"]["absolute_ready"]
-        if signal is not None and efficiency and acceptance and lumi and absolute_ready:
-            cross_sections["fiducial_pb"] = signal / (efficiency * float(lumi))
-            cross_sections["full_pb"] = signal / (acceptance * efficiency * float(lumi))
+        if (signal is not None and net_fiducial_correction and acceptance and lumi
+                and absolute_ready):
+            cross_sections["fiducial_pb"] = signal / (
+                net_fiducial_correction * float(lumi)
+            )
+            cross_sections["full_pb"] = signal / (
+                acceptance * net_fiducial_correction * float(lumi)
+            )
         cross_sections.update({"data_A": ndata, "provisional_abcd_background": background,
                                "provisional_signal_yield": signal})
     summary = {
@@ -649,6 +694,7 @@ def main() -> int:
             "PDG-23 ancestry is an operational MC truth definition; Z/gamma* interference is not experimentally separable.",
             "Absolute cross sections remain null until luminosity and DY normalization metadata are supplied.",
             "The raw ABCD background has no prompt subtraction or validated closure and is provisional.",
+            "Use finalize_z_cross_section.py for the nominal manual-background treatment and final result.",
             "The highest-pT matched-muon trigger SF and coherent uncertainty variations are provisional prescriptions.",
             "The reconstructed-vertex pileup correction is experimental and disabled unless explicitly enabled."
         ],

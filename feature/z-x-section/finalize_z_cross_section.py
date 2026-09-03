@@ -80,18 +80,24 @@ def main() -> int:
 
     acceptance = signal["acceptance"]
     efficiency = signal["efficiency"]
+    purity = signal.get("purity")
+    net_fiducial_correction = signal.get("net_fiducial_correction")
     acceptance_stat = ratio_uncertainty(acceptance, signal["yields"]["truth_total"])
     efficiency_stat = ratio_uncertainty(
         efficiency, signal["yields"]["truth_fiducial_pileup_weighted"]
     )
-    efficiency_variations = {
+    purity_stat = ratio_uncertainty(purity, signal["yields"]["selected"])
+    detector_variations = {
         name: value["relative_to_nominal"]
-        for name, value in signal.get("variation_efficiencies", {}).items()
+        for name, value in signal.get(
+            "variation_net_fiducial_corrections",
+            signal.get("variation_efficiencies", {}),
+        ).items()
     }
     sf_groups: dict[str, float] = {}
     for group in ("reco_sys", "reco_stat", "iso_sys", "iso_stat", "trigger_sys", "trigger_stat"):
-        shifts = [abs(float(efficiency_variations[name])) for name in (f"{group}_up", f"{group}_down")
-                  if efficiency_variations.get(name) is not None]
+        shifts = [abs(float(detector_variations[name])) for name in (f"{group}_up", f"{group}_down")
+                  if detector_variations.get(name) is not None]
         sf_groups[group] = max(shifts, default=0.0)
 
     prompt_mode = config["prompt_backgrounds"]["mode"]
@@ -147,12 +153,31 @@ def main() -> int:
         missing_metadata = sorted(set(metadata_by_name) - set(merged.get("backgrounds", {})))
         if missing_metadata:
             raise ValueError(f"Configured prompt samples have no merged input: {missing_metadata}")
+    elif prompt_mode == "manual_fraction":
+        manual = config["prompt_backgrounds"].get("manual_component", {})
+        fraction = float(manual.get("fraction_of_observed_candidates", 0.0))
+        fraction_uncertainty = float(
+            manual.get("uncertainty_fraction_of_observed_candidates", 0.0)
+        )
+        if not 0.0 <= fraction < 1.0 or fraction_uncertainty < 0.0:
+            raise ValueError("Manual background fraction must be in [0,1) with nonnegative uncertainty")
+        prompt_a = observed_a * fraction
+        prompt_norm_uncertainty = observed_a * fraction_uncertainty
     elif prompt_mode != "missing_uncertainty":
-        raise ValueError("prompt_backgrounds.mode must be explicit or missing_uncertainty")
+        raise ValueError(
+            "prompt_backgrounds.mode must be explicit, manual_fraction, or missing_uncertainty"
+        )
 
     closure = float(nonprompt_cfg.get("closure_factor", 1.0))
     corrected = {region: float(data_regions[region]) - prompt_bcd[region] for region in "BCD"}
-    if corrected["D"] <= 0.0:
+    nonprompt_mode = nonprompt_cfg.get("mode", "abcd")
+    derivatives: dict[str, float] = {}
+    if nonprompt_mode == "disabled":
+        nonprompt = 0.0
+        nonprompt_stat_variance = 0.0
+    elif nonprompt_mode != "abcd":
+        raise ValueError("nonprompt_background.mode must be abcd or disabled")
+    elif corrected["D"] <= 0.0:
         nonprompt = None
         nonprompt_stat_variance = None
     else:
@@ -220,11 +245,12 @@ def main() -> int:
         )
 
     ready = (luminosity is not None and luminosity > 0.0 and acceptance not in (None, 0.0)
-             and efficiency not in (None, 0.0) and signal_yield is not None and signal_yield > 0.0)
+             and net_fiducial_correction not in (None, 0.0)
+             and signal_yield is not None and signal_yield > 0.0)
     fiducial = full = None
     uncertainties: dict[str, Any] = {}
     if ready:
-        fiducial = signal_yield / (float(efficiency) * luminosity)
+        fiducial = signal_yield / (float(net_fiducial_correction) * luminosity)
         full = fiducial / float(acceptance)
         yield_stat = quadrature(math.sqrt(observed_a), math.sqrt(nonprompt_stat_variance or 0.0),
                                 math.sqrt(prompt_a_mc_variance))
@@ -235,10 +261,11 @@ def main() -> int:
             missing_prompt_uncertainty,
         )
         external = config.get("systematics", {})
-        efficiency_relative = quadrature(
+        detector_correction_relative = quadrature(
             *(sf_groups.values()),
             float(external.get("efficiency_additional_fraction", 0.0)),
             0.0 if efficiency_stat is None else efficiency_stat / float(efficiency),
+            0.0 if purity_stat is None else purity_stat / float(purity),
         )
         acceptance_relative = quadrature(
             float(external.get("acceptance_modeling_fraction", 0.0)),
@@ -247,7 +274,7 @@ def main() -> int:
         lumi_relative = float(config["luminosity"].get("uncertainty_fraction", 0.0))
         common_relative = quadrature(
             yield_stat / signal_yield, yield_background / signal_yield,
-            efficiency_relative, lumi_relative,
+            detector_correction_relative, lumi_relative,
             float(external.get("muon_momentum_fraction", 0.0)),
             float(external.get("pileup_fraction", 0.0)),
         )
@@ -256,7 +283,8 @@ def main() -> int:
             "yield_stat_events": yield_stat,
             "background_systematic_events": yield_background,
             "missing_prompt_events": missing_prompt_uncertainty,
-            "efficiency_relative": efficiency_relative,
+            "efficiency_relative": detector_correction_relative,
+            "detector_correction_relative": detector_correction_relative,
             "acceptance_relative": acceptance_relative,
             "luminosity_relative": lumi_relative,
             "fiducial_total_pb": abs(fiducial) * common_relative,
@@ -284,12 +312,13 @@ def main() -> int:
         or float(missing_cfg.get("fraction_of_candidate_yield", 0.0)) > 0.0
     )
     result = {
-        "schema_version": 1,
+        "schema_version": 2,
         "title": "Inclusive Z to dimuon cross-section finalization",
         "ready_for_absolute_result": ready,
         "formulae": {
-            "fiducial": "(N_A - N_nonprompt - N_prompt) / (epsilon * luminosity)",
-            "full": "(N_A - N_nonprompt - N_prompt) / (acceptance * epsilon * luminosity)",
+            "fiducial": "(N_A - N_nonprompt - N_prompt) / (net_fiducial_correction * luminosity)",
+            "full": "(N_A - N_nonprompt - N_prompt) / (acceptance * net_fiducial_correction * luminosity)",
+            "net_fiducial_correction": "epsilon / purity = selected_reconstructed / truth_fiducial",
             "mc_normalization": "luminosity * cross_section * filter_efficiency * matching_efficiency * k_factor / sum_generator_weights",
         },
         "inputs": {"measurement_inputs": str(args.measurement_inputs.resolve()),
@@ -300,6 +329,9 @@ def main() -> int:
         "acceptance_statistical_estimate": acceptance_stat,
         "efficiency": efficiency,
         "efficiency_statistical_estimate": efficiency_stat,
+        "purity": purity,
+        "purity_statistical_estimate": purity_stat,
+        "net_fiducial_correction": net_fiducial_correction,
         "observed_A": observed_a,
         "nonprompt_background": {"value": nonprompt, "total_uncertainty": nonprompt_uncertainty,
                                  "prompt_subtracted_BCD": corrected,
@@ -310,6 +342,10 @@ def main() -> int:
                               "normalization_effect_on_abcd_uncertainty": prompt_bcd_norm_uncertainty,
                               "combined_normalization_effect_on_signal_yield": prompt_combined_norm_uncertainty,
                               "missing_component_uncertainty": missing_prompt_uncertainty,
+                              "manual_component": (
+                                  config["prompt_backgrounds"].get("manual_component")
+                                  if prompt_mode == "manual_fraction" else None
+                              ),
                               "ignored_merged_backgrounds": (
                                   sorted(merged.get("backgrounds", {}))
                                   if prompt_mode == "missing_uncertainty" else []
