@@ -299,6 +299,27 @@ It can read either the original `*_abcd_skim.root` inputs or corrected
 `data_selected.root`/`mc_selected.root` files produced by a 60-120 GeV
 measurement pass.
 
+The absolute DY-to-data mass-shape diagnostic can be made from the merged
+wide-window skims after finalization:
+
+```bash
+python feature/z-x-section/plot_mass_data_mc.py \
+  "$RESULTS/merged/full_sideband_input" \
+  --cross-section-result "$RESULTS/final/cross_section/cross_section_result.json" \
+  --golden-json Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt \
+  --output-dir "$RESULTS/plots" \
+  --label absolute_mass_data_mc
+```
+
+It writes linear- and log-scale SVG plots, each with and without the configured
+global background fraction. A background fraction contains no differential
+shape information, so the background-added plots use a clearly labelled
+DY-shaped proxy normalized to the requested integral. The script applies the
+golden JSON to the data skim and reconstructs nominal reco/isolation/trigger
+SFs for MC. Since the existing wide-window skim stores the mass before the
+provisional momentum correction, this is a shape diagnostic rather than an
+exact reproduction of the final selected yield.
+
 ## Output interpretation
 
 MC cutflows use signed `genWeight` sums and save `sum_weights_squared` for
