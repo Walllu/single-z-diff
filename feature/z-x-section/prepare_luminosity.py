@@ -36,7 +36,11 @@ def compress(pairs: set[tuple[int, int]]) -> dict[str, list[list[int]]]:
 def parse_brilcalc(filename: Path) -> tuple[float, dict[str, Any]]:
     lines = [line.strip().lstrip("#").strip() for line in filename.read_text().splitlines()
              if line.strip()]
+    candidates: list[tuple[float, str, bool]] = []
+    summary_seen = False
     for index, line in enumerate(lines):
+        if "summary" in line.lower():
+            summary_seen = True
         fields = [field.strip() for field in next(csv.reader([line]))]
         recorded = next((position for position, field in enumerate(fields)
                          if field.lower().startswith("totrecorded(")), None)
@@ -47,6 +51,8 @@ def parse_brilcalc(filename: Path) -> tuple[float, dict[str, Any]]:
             raise ValueError(f"Cannot determine BRIL luminosity unit from {fields[recorded]!r}")
         for candidate in lines[index + 1:]:
             values = [value.strip() for value in next(csv.reader([candidate]))]
+            if any(value.lower().startswith("totrecorded(") for value in values):
+                break
             if len(values) <= recorded:
                 continue
             try:
@@ -54,11 +60,15 @@ def parse_brilcalc(filename: Path) -> tuple[float, dict[str, Any]]:
             except ValueError:
                 continue
             unit = match.group(1).lower()
-            to_pb = {"/ub": 1.0e-6, "/nb": 1.0e-3, "/pb": 1.0, "/fb": 1.0e3}
-            if unit not in to_pb:
-                raise ValueError(f"Unsupported BRIL luminosity unit {unit}")
-            return raw * to_pb[unit], {"raw_recorded": raw, "raw_unit": unit,
-                                       "source": str(filename.resolve())}
+            candidates.append((raw, unit, summary_seen))
+    if candidates:
+        summary_candidates = [candidate for candidate in candidates if candidate[2]]
+        raw, unit, _ = (summary_candidates or candidates)[-1]
+        to_pb = {"/ub": 1.0e-6, "/nb": 1.0e-3, "/pb": 1.0, "/fb": 1.0e3}
+        if unit not in to_pb:
+            raise ValueError(f"Unsupported BRIL luminosity unit {unit}")
+        return raw * to_pb[unit], {"raw_recorded": raw, "raw_unit": unit,
+                                   "source": str(filename.resolve())}
     raise ValueError(f"No totrecorded summary row found in {filename}")
 
 
@@ -91,7 +101,8 @@ def main() -> int:
         "integrated_luminosity_pb_inverse": integrated,
         "brilcalc": bril,
         "next_command": (
-            f"brilcalc lumi -u /pb -i {selected_file} --normtag PATH_TO_APPROVED_NORMTAG -o luminosity.csv"
+            f"brilcalc lumi -c web -u /pb -i {selected_file} "
+            "--normtag PATH_TO_APPROVED_NORMTAG --output-style csv -o luminosity.csv"
             if args.brilcalc_csv is None else None
         ),
         "warning": "The event selection must use the same golden JSON; intersection after processing cannot remove uncertified events already counted.",
