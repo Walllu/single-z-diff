@@ -72,11 +72,87 @@ def parse_brilcalc(filename: Path) -> tuple[float, dict[str, Any]]:
     raise ValueError(f"No totrecorded summary row found in {filename}")
 
 
+def parse_lumibyls(
+    filename: Path, selected: set[tuple[int, int]]
+) -> tuple[float, dict[str, Any]]:
+    """Sum an official BRIL by-lumisection CSV over an exact run/LS selection."""
+    rows: dict[tuple[int, int], float] = {}
+    unit: str | None = None
+    header: list[str] | None = None
+    positions: tuple[int, int, int] | None = None
+    for raw_line in filename.read_text().splitlines():
+        line = raw_line.strip().lstrip("#").strip()
+        if not line:
+            continue
+        values = [value.strip() for value in next(csv.reader([line]))]
+        run_position = next(
+            (index for index, value in enumerate(values)
+             if value.lower().startswith("run:fill")),
+            None,
+        )
+        ls_position = next(
+            (index for index, value in enumerate(values) if value.lower() == "ls"),
+            None,
+        )
+        recorded_position = next(
+            (index for index, value in enumerate(values)
+             if value.lower().startswith("recorded(")),
+            None,
+        )
+        if None not in (run_position, ls_position, recorded_position):
+            header = values
+            positions = (int(run_position), int(ls_position), int(recorded_position))
+            match = re.search(r"\((/[^)]+)\)", values[int(recorded_position)])
+            if match is None:
+                raise ValueError(
+                    f"Cannot determine luminosity unit from {values[int(recorded_position)]!r}"
+                )
+            unit = match.group(1).lower()
+            continue
+        if positions is None:
+            continue
+        run_position, ls_position, recorded_position = positions
+        if len(values) <= max(positions):
+            continue
+        try:
+            run = int(values[run_position].split(":", 1)[0])
+            lumi = int(values[ls_position].split(":", 1)[0])
+            recorded = float(values[recorded_position])
+        except ValueError:
+            continue
+        key = (run, lumi)
+        if key in rows and rows[key] != recorded:
+            raise ValueError(f"Conflicting luminosity values for run/LS {key}")
+        rows[key] = recorded
+    if header is None or unit is None or not rows:
+        raise ValueError(f"No run/LS luminosity rows found in {filename}")
+    to_pb = {"/ub": 1.0e-6, "/nb": 1.0e-3, "/pb": 1.0, "/fb": 1.0e3}
+    if unit not in to_pb:
+        raise ValueError(f"Unsupported luminosity unit {unit}")
+    matched = selected & set(rows)
+    missing = selected - set(rows)
+    integrated = sum(rows[key] for key in matched) * to_pb[unit]
+    return integrated, {
+        "kind": "official_luminosity_by_lumisection_csv",
+        "source": str(filename.resolve()),
+        "raw_unit": unit,
+        "available_rows": len(rows),
+        "matched_selected_sections": len(matched),
+        "selected_sections_without_luminosity": len(missing),
+        "missing_examples": [[run, lumi] for run, lumi in sorted(missing)[:10]],
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("processed_lumis", type=Path)
     parser.add_argument("--golden-json", type=Path, required=True)
-    parser.add_argument("--brilcalc-csv", type=Path)
+    luminosity_source = parser.add_mutually_exclusive_group()
+    luminosity_source.add_argument("--brilcalc-csv", type=Path)
+    luminosity_source.add_argument(
+        "--lumibyls-csv", type=Path,
+        help="Official luminosity-by-lumisection CSV, such as pp_2016lumibyls.csv",
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
     processed = expand(json.loads(args.processed_lumis.read_text()))
@@ -87,11 +163,13 @@ def main() -> int:
     selected_file = output / "processed_certified_lumis.json"
     selected_file.write_text(json.dumps(compress(selected), indent=2) + "\n")
     integrated = None
-    bril = None
+    source_details = None
     if args.brilcalc_csv:
-        integrated, bril = parse_brilcalc(args.brilcalc_csv)
+        integrated, source_details = parse_brilcalc(args.brilcalc_csv)
+    elif args.lumibyls_csv:
+        integrated, source_details = parse_lumibyls(args.lumibyls_csv, selected)
     summary = {
-        "schema_version": 1,
+        "schema_version": 2,
         "processed_sections": len(processed),
         "certified_sections": len(certified),
         "processed_and_certified_sections": len(selected),
@@ -99,11 +177,12 @@ def main() -> int:
         "certified_not_observed_sections": len(certified - processed),
         "processed_certified_lumis_json": str(selected_file),
         "integrated_luminosity_pb_inverse": integrated,
-        "brilcalc": bril,
+        "luminosity_source": source_details,
+        "brilcalc": source_details if args.brilcalc_csv else None,
         "next_command": (
             f"brilcalc lumi -c web -u /pb -i {selected_file} "
             "--normtag PATH_TO_APPROVED_NORMTAG --output-style csv -o luminosity.csv"
-            if args.brilcalc_csv is None else None
+            if args.brilcalc_csv is None and args.lumibyls_csv is None else None
         ),
         "warning": "The event selection must use the same golden JSON; intersection after processing cannot remove uncertified events already counted.",
     }
